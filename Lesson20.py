@@ -3,14 +3,16 @@ from tkinter import ttk
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
-from matplotlib.figure import Figure
+#from matplotlib.figure import Figure
 import matplotlib.animation as animation
 from matplotlib import style
+from matplotlib import pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.ticker as mticker
 import urllib
 import json
 import pandas as pd
 import numpy as np
-from matplotlib import pyplot as plt
 
 #   {} - alt + 7
 #   [] - alt + 8
@@ -25,27 +27,30 @@ SMALL_FONT = ("Verdana", 8)
 
 style.use("ggplot")
 
-f = Figure()
-a = f.add_subplot(111)
+f = plt.figure()
+#a = f.add_subplot(111)
 
 # THESE ARE DEFAULTS WHICH THE USER CAN CHANGE LATER
 exchange = "BTC-e"
 DatCounter = 9000  # force an update instead of waiting 30 seconds, counter for that is this
 programName = "btce"
 resampleSize = "15Min"  # each candle stcik will show 15 minutes change
-DataPace = "1d"  # 1 day worth of price data
+DataPace = "tick"
 candleWidth = 0.008
+paneCount = 1
 topIndicator = "none"
 bottomIndicator = "none"
 middleIndicator = "none"
 chartLoad = True
+
+darkColor = "#824B4B"
+lightColor= "#4B8251"
+volumeColor = "#7CA1B4"
+
 EMAs = []
 SMAs = []
 
 def tutorial():
-#    def leavemini(what):
-#        what.destroy()
-
     def page2():
         tut.destroy()
         tut2 = tk.Tk()
@@ -76,7 +81,6 @@ def tutorial():
     B1 = ttk.Button(tut, text = "Overview of the application", command = page2)
     B1.pack()
 
-
     B2 = ttk.Button(tut, text="How do I trade with this client", command = lambda: popupmsg("Not yet completed"))
     B2.pack()
 
@@ -84,7 +88,6 @@ def tutorial():
     B3.pack()
 
     tut.mainloop()
-
 
 def loadChart(run):
     global chartLoad
@@ -216,7 +219,6 @@ def addMiddleIndicator(what):
                 b.pack()
                 tk.mainloop()
 
-
     else:
         middleIndicator = "none"
 
@@ -315,7 +317,6 @@ def changeTimeFrame(tf):
         DataPace = tf
         DatCounter = 9000
 
-
 def changeSampleSize(size, width):
     global resampleSize
     global DatCounter
@@ -330,7 +331,6 @@ def changeSampleSize(size, width):
         DatCounter = 9000
         candleWidth = width
 
-
 def changeExchange(toWhat, pn):  # program name
     global exchange
     global DatCounter
@@ -339,7 +339,6 @@ def changeExchange(toWhat, pn):  # program name
     exchange = toWhat
     programName = pn
     DatCounter = 9000
-
 
 def popupmsg(msg):  # a miniature version of a tk window
     popup = tk.Tk()
@@ -354,35 +353,87 @@ def popupmsg(msg):  # a miniature version of a tk window
     B1.pack()  # just naturally go under the label
     popup.mainloop()
 
-
 def animate(i):
-    dataLink = "https://wex.nz/api/3/trades/btc_usd?limit=2000"
-    data = urllib.request.urlopen(dataLink)
-    data = data.read().decode("utf-8")  # this is in bytes so we have to decode it into strings
-    data = json.loads(data)  # read it into strings,
-    # json is a list of lists, which is a dictionary, the key is BTC and the value is all the trading info
-    # but then the value is also a list of lists made of type and others...
+    global refreshRate
+    global DatCounter
 
-    data = data["btc_usd"]
-    data = pd.DataFrame(data)  # became a pandas dataset
+    if chartLoad:
+        if paneCount == 1:
+            if DataPace == "tick":
+                try:
+                    if exchange == "BTC-e":
+                        a = plt.subplot2grid((6,4), (0,0), rowspan= 5, colspan=4) # 6x4 - (0,0) top left corner, 5 rows and 4 columns, leaving one row remaining
+                        a2 = plt.subplot2grid((6,4), (5,0), rowspan= 1, colspan=4, sharex= a) # shares the x axis with a (affects zooming)
 
-    buys = data[(data["type"] == "bid")]
-    buys["datestamp"] = np.array(buys["timestamp"]).astype(
-        "datetime64[s]")  # adding a new column called datestamp with converted time
-    buyDates = (buys["datestamp"]).tolist()
+                        dataLink = "https://wex.nz/api/3/trades/btc_usd?limit=2000"
+                        data = urllib.request.urlopen(dataLink)
+                        data = data.read().decode("utf-8")  # this is in bytes so we have to decode it into strings
+                        data = json.loads(data)  # read it into strings
+                        # json is a list of lists, which is a dictionary, the key is BTC and the value is all the trading info
+                        # but then the value is also a list of lists made of type and others...
 
-    sells = data[(data["type"] == "ask")]
-    sells["datestamp"] = np.array(sells["timestamp"]).astype("datetime64[s]")  # adding a new column called datestamp
-    sellDates = (sells["datestamp"]).tolist()
+                        data = data["btc_usd"]
+                        data = pd.DataFrame(data)  # became a pandas dataset
 
-    a.clear()
-    a.plot_date(buyDates, buys["price"], "#4B8251", label="buys")  # X parameter will be dates and the Y will be price
-    a.plot_date(sellDates, sells["price"], "#824B4B", label="sells")
+                        data["datestamp"] = np.array(data["timestamp"]).astype("datetime64[s]")
+                        allDates = data["datestamp"].tolist() # for volume we need both the sell and buy dates
 
-    a.legend(bbox_to_anchor=(0, 1.02, 1, .102), loc=3, ncol=2, borderaxespad=0)
+                        buys = data[(data["type"] == "bid")]
+                        buyDates = (buys["datestamp"]).tolist()
 
-    title = "BTC-e BTCUSD Prices\nLast Price: " + str(data["price"][1999])
-    a.set_title(title)
+                        sells = data[(data["type"] == "ask")]
+                        sellDates = (sells["datestamp"]).tolist()
+
+                        volume = data["amount"] # its part of the json, has to do with the trading volume
+
+                        a.clear()
+                        a.plot_date(buyDates, buys["price"], lightColor, label="buys")  # X parameter will be dates and the Y will be price
+                        a.plot_date(sellDates, sells["price"], darkColor, label="sells")
+
+                        a2.fill_between(allDates, 0, volume, facecolors=volumeColor)
+
+                        a.xaxis.set_major_locator(mticker.MaxNLocator(5)) # making sure dates wont run over each other
+                        a.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d% %H:M:S"))
+
+                        a.legend(bbox_to_anchor=(0, 1.02, 1, .102), loc=3, ncol=2, borderaxespad=0)
+
+                        title = "BTC-e BTCUSD Prices\nLast Price: " + str(data["price"][1999])
+                        a.set_title(title)
+
+                    if exchange == "Bitstamp":
+                        a = plt.subplot2grid((6, 4), (0, 0), rowspan=5,
+                                             colspan=4)  # 6x4 - (0,0) top left corner, 5 rows and 4 columns, leaving one row remaining
+                        a2 = plt.subplot2grid((6, 4), (5, 0), rowspan=1, colspan=4,
+                                              sharex=a)  # shares the x axis with a (affects zooming)
+
+                        dataLink = "https://www.bitstamp.net/api/transactions/"
+                        data = urllib.request.urlopen(dataLink)
+                        data = data.read().decode("utf-8")  # this is in bytes so we have to decode it into strings
+                        data = json.loads(data)  # read it into strings
+
+                        data = pd.DataFrame(data)  # became a pandas dataset
+
+                        data["datestamp"] = np.array(data["date"].apply(int)).astype("datetime64[s]")
+                        dateStamps = data["datestamp"].tolist()
+
+                        volume = data["amount"].apply(float).tolist()  # its part of the json, has to do with the trading volume
+
+                        a.clear()
+
+                        a.plot_date(dateStamps, data["price"], lightColor, label="buys")  # X parameter will be dates and the Y will be price
+
+                        a2.fill_between(dateStamps, 0, volume, facecolors= volumeColor)
+
+                        a.xaxis.set_major_locator(mticker.MaxNLocator(5))  # making sure dates wont run over each other
+                        a.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d% %H:M:S"))
+
+                        a.legend(bbox_to_anchor=(0, 1.02, 1, .102), loc=3, ncol=2, borderaxespad=0)
+
+                        title = "Bitstamp BTCUSD Prices\nLast Price: " + str(data["price"][0])
+                        a.set_title(title)
+
+                except Exception as e:
+                    print("Failed because of:", e)
 
 
 class SeaofBTCapp(tk.Tk):  # inherit from the tk class
