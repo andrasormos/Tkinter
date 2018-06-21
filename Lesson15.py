@@ -36,6 +36,13 @@ programName = "btce"
 resampleSize = "15Min" # each candle stcik will show 15 minutes change
 DataPace = "1d" # 1 day worth of price data
 candleWidth = 0.008
+topIndicator = "none"
+bottomIndicator = "none"
+middleIndicator = "none"
+EMAs = []
+SMAs = []
+
+#def addTopIndicator():
 
 def changeTimeFrame(tf):
     global DataPace
@@ -157,6 +164,24 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
         OHLCI.add_command(label="1 Hour", command=lambda: changeSampleSize("1H", 0.032))
         OHLCI.add_command(label="3 Hour", command=lambda: changeSampleSize("3H", 0.096))
         menubar.add_cascade(label="OHLC Interval", menu=OHLCI)
+
+        topIndi = tk.Menu(menubar, tearoff=1)
+        topIndi.add_command(label"None", command= lambda: addTopIndicator("none"))
+        topIndi.add_command(label"RSI", command= lambda: addTopIndicator("rsi"))
+        topIndi.add_command(label"MACD", command= lambda: addTopIndicator("macd"))
+        menubar.add_cascade(label="Top Indicator", menu=topIndi)
+
+        mainI = tk.Menu(menubar, tearoff=1)
+        mainI.add_command(label"None", command= lambda: addMiddleIndicator("none"))
+        mainI.add_command(label"SMA", command= lambda: addMiddleIndicator("sma"))
+        mainI.add_command(label"EMA", command= lambda: addMiddleIndicator("ema"))
+        menubar.add_cascade(label="Main/middle Indicator", menu=mainI)
+
+        bottomI = tk.Menu(menubar, tearoff=1)
+        bottomI.add_command(label"None", command= lambda: addBottomIndicator("none"))
+        bottomI.add_command(label"RSI", command= lambda: addBottomIndicator("rsi"))
+        bottomI.add_command(label"MACD", command= lambda: addBottomIndicator("macd"))
+        menubar.add_cascade(label="Bottom Indicator", menu=bottomI)
 
 
 

@@ -31,11 +31,103 @@ a = f.add_subplot(111)
 
 # THESE ARE DEFAULTS WHICH THE USER CAN CHANGE LATER
 exchange = "BTC-e"
-DatCounter = 9000 # force an update instead of waiting 30 seconds, counter for that is this
+DatCounter = 9000  # force an update instead of waiting 30 seconds, counter for that is this
 programName = "btce"
-resampleSize = "15Min" # each candle stcik will show 15 minutes change
-DataPace = "1d" # 1 day worth of price data
+resampleSize = "15Min"  # each candle stcik will show 15 minutes change
+DataPace = "1d"  # 1 day worth of price data
 candleWidth = 0.008
+topIndicator = "none"
+bottomIndicator = "none"
+middleIndicator = "none"
+EMAs = []
+SMAs = []
+
+
+def addTopIndicator(what):
+    global topIndicator
+    global DatCounter
+
+    if DataPace == "tick":
+        popupmsg("Indicators in Tick Data not available.")
+
+    elif what == "none":
+        topIndicator = what
+        DatCounter = 9000
+
+    elif what == "rsi": # IF RSI IS PICKED
+        rsiQ = tk.Tk()
+        rsiQ.wm_title("Periods?")
+        label = ttk.Label(rsiQ, text = "Choose how many periods you want each RSI calculations to consider.")
+        label.pack(side="top", fill="x", pady=10)
+
+        e = ttk.Entry(rsiQ) # entry widget for the rsiQ window
+        e.insert(0,14)
+        e.pack()
+        e.focus_set()
+
+        def callback():
+            global topIndicator
+            global DatCounter
+
+            periods = (e.get()) # get what was typed into the focused entry widget
+            group = []
+            group.append("rsi")
+            group.append(periods)
+            topIndicator = group
+            DatCounter = 9000
+            print("Set top Indicator to", group)
+            rsiQ.destroy()
+
+        b = ttk.Button(rsiQ, text="Submit", width=10, command=callback) # it's going into the rsiQ
+        b.pack()
+        tk.mainloop()
+
+    elif what == "macd":
+        topIndicator = "macd"
+        DatCounter = 9000
+
+def addBottomIndicator(what):
+    global bottomIndicator
+    global DatCounter
+
+    if DataPace == "tick":
+        popupmsg("Indicators in Tick Data not available.")
+
+    elif what == "none":
+        bottomIndicator = what
+        DatCounter = 9000
+
+    elif what == "rsi": # IF RSI IS PICKED
+        rsiQ = tk.Tk()
+        rsiQ.wm_title("Periods?")
+        label = ttk.Label(rsiQ, text = "Choose how many periods you want each RSI calculations to consider.")
+        label.pack(side="top", fill="x", pady=10)
+
+        e = ttk.Entry(rsiQ) # entry widget for the rsiQ window
+        e.insert(0,14)
+        e.pack()
+        e.focus_set()
+
+        def callback():
+            global bottomIndicator
+            global DatCounter
+
+            periods = (e.get()) # get what was typed into the focused entry widget
+            group = []
+            group.append("rsi")
+            group.append(periods)
+            bottomIndicator = group
+            DatCounter = 9000
+            print("Set bottom Indicator to", group)
+            rsiQ.destroy()
+
+        b = ttk.Button(rsiQ, text="Submit", width=10, command=callback) # it's going into the rsiQ
+        b.pack()
+        tk.mainloop()
+
+    elif what == "macd":
+        bottomIndicator = "macd"
+        DatCounter = 9000
 
 def changeTimeFrame(tf):
     global DataPace
@@ -45,6 +137,7 @@ def changeTimeFrame(tf):
     else:
         DataPace = tf
         DatCounter = 9000
+
 
 def changeSampleSize(size, width):
     global resampleSize
@@ -61,14 +154,15 @@ def changeSampleSize(size, width):
         candleWidth = width
 
 
-def changeExchange(toWhat, pn): # program name
+def changeExchange(toWhat, pn):  # program name
     global exchange
     global DatCounter
-    global programName # by globalling them we can modify them
+    global programName  # by globalling them we can modify them
 
     exchange = toWhat
     programName = pn
     DatCounter = 9000
+
 
 def popupmsg(msg):  # a miniature version of a tk window
     popup = tk.Tk()
@@ -135,22 +229,23 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
         menubar.add_cascade(label="File", menu=filemenu)  # actually assign the file to menubar
 
         exchangeChoice = tk.Menu(menubar, tearoff=1)
-        exchangeChoice.add_command(label= "BTC-e", command= lambda: changeExchange("BTC-e","btce"))
+        exchangeChoice.add_command(label="BTC-e", command=lambda: changeExchange("BTC-e", "btce"))
         exchangeChoice.add_command(label="Bitfinex", command=lambda: changeExchange("Bitfinex", "bitfinex"))
         exchangeChoice.add_command(label="Bitstamp", command=lambda: changeExchange("Bitstamp", "bitstamp"))
         exchangeChoice.add_command(label="Huobi", command=lambda: changeExchange("Huobi", "huobi"))
         menubar.add_cascade(label="Exchange", menu=exchangeChoice)
 
-        dataTF = tk.Menu(menubar, tearoff=1) # timeframes for bars
-        dataTF.add_command(label= "Tick", command= lambda: changeTimeFrame("tick"))
+        dataTF = tk.Menu(menubar, tearoff=1)  # timeframes for bars
+        dataTF.add_command(label="Tick", command=lambda: changeTimeFrame("tick"))
         dataTF.add_command(label="1 Day", command=lambda: changeTimeFrame("1d"))
         dataTF.add_command(label="3 Day", command=lambda: changeTimeFrame("3d"))
         dataTF.add_command(label="1 Week", command=lambda: changeTimeFrame("7d"))
         menubar.add_cascade(label="Data Time Frame", menu=dataTF)
 
         OHLCI = tk.Menu(menubar, tearoff=1)
-        OHLCI.add_command(label= "Tick", command= lambda: changeTimeFrame("tick"))
-        OHLCI.add_command(label="1 minute", command=lambda: changeSampleSize("1Min", 0.0005)) # width of the candle stick
+        OHLCI.add_command(label="Tick", command=lambda: changeTimeFrame("tick"))
+        OHLCI.add_command(label="1 minute",
+                          command=lambda: changeSampleSize("1Min", 0.0005))  # width of the candle stick
         OHLCI.add_command(label="5 minute", command=lambda: changeSampleSize("5Min", 0.003))
         OHLCI.add_command(label="15 minute", command=lambda: changeSampleSize("15Min", 0.008))
         OHLCI.add_command(label="30 minute", command=lambda: changeSampleSize("30Min", 0.016))
@@ -158,7 +253,23 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
         OHLCI.add_command(label="3 Hour", command=lambda: changeSampleSize("3H", 0.096))
         menubar.add_cascade(label="OHLC Interval", menu=OHLCI)
 
+        topIndi = tk.Menu(menubar, tearoff=1)
+        topIndi.add_command(label = "None", command = lambda: addTopIndicator("none"))
+        topIndi.add_command(label = "RSI", command = lambda: addTopIndicator("rsi"))
+        topIndi.add_command(label = "MACD", command = lambda: addTopIndicator("macd"))
+        menubar.add_cascade(label = "Top Indicator", menu=topIndi)
 
+        mainI = tk.Menu(menubar, tearoff=1)
+        mainI.add_command(label = "None", command = lambda: addMiddleIndicator("none"))
+        mainI.add_command(label = "SMA", command = lambda: addMiddleIndicator("sma"))
+        mainI.add_command(label = "EMA", command = lambda: addMiddleIndicator("ema"))
+        menubar.add_cascade(label = "Main/middle Indicator", menu=mainI)
+
+        bottomI = tk.Menu(menubar, tearoff=1)
+        bottomI.add_command(label="None", command = lambda: addBottomIndicator("none"))
+        bottomI.add_command(label= "RSI", command = lambda: addBottomIndicator("rsi"))
+        bottomI.add_command(label="MACD", command = lambda: addBottomIndicator("macd"))
+        menubar.add_cascade(label="Bottom Indicator", menu=bottomI)
 
         tk.Tk.config(self, menu=menubar)
 
