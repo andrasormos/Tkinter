@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import matplotlib
+import datetime as dt
 
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
@@ -29,60 +30,32 @@ import numpy as np
 LARGE_FONT = ("Verdana", 12)
 NORM_FONT = ("Verdana", 10)
 SMALL_FONT = ("Verdana", 8)
-
 style.use("ggplot")
-
 f = plt.figure()
 
+# MY VARIABLES
+startDate = "2018-1-1 01:00:00"
+endDate = "2018-2-1 01:00:00"
+candleWidth = 0.5
+darkColor = "#824B4B"
+lightColor = "#4B8251"
+volumeColor = "#7CA1B4"
+
+
 # THESE ARE DEFAULTS WHICH THE USER CAN CHANGE LATER
-exchange = "BTC-e"
+exchange = "GDAX_BTCUSD"
 DatCounter = 9000  # force an update instead of waiting 30 seconds, counter for that is this
 programName = "btce"
 resampleSize = "15Min"  # each candle stcik will show 15 minutes change
 DataPace = "tick"
-candleWidth = 0.008
+
 paneCount = 1
 topIndicator = "none"
 bottomIndicator = "none"
 middleIndicator = "none"
 chartLoad = True
 
-darkColor = "#824B4B"
-lightColor = "#4B8251"
-volumeColor = "#7CA1B4"
 
-
-def loadChart(run):
-    global chartLoad
-
-    if run == "start":
-        chartLoad = True
-
-    elif run == "stop":
-        chartLoad = False
-
-def changeTimeFrame(tf):
-    global DataPace
-    global DatCounter
-    if tf == "7d" and resampleSize == "1Min":
-        popupmsg("Too much data chosen, choose a smaller time frame or higher OHLC interval")
-    else:
-        DataPace = tf
-        DatCounter = 9000
-
-def changeSampleSize(size, width):
-    global resampleSize
-    global DatCounter
-    global candleWidth
-    if tf == "7d" and resampleSize == "1Min":
-        popupmsg("Too much data chosen, choose a smaller time frame or higher OHLC interval")
-
-    elif DataPace == "tick":
-        popupmsg("You're currently viewing tick data, not OHLC")
-    else:
-        resampleSize = size
-        DatCounter = 9000
-        candleWidth = width
 
 def changeExchange(toWhat, pn):  # program name
     global exchange
@@ -112,47 +85,31 @@ def animate(i):
 
     if chartLoad:
         try:
-            if exchange == "BTC-e":
-                a = plt.subplot2grid((6, 4), (0, 0), rowspan=5, colspan=4)  # 6x4 - (0,0) top left corner, 5 rows and 4 columns, leaving one row remaining
-                a2 = plt.subplot2grid((6, 4), (5, 0), rowspan=1, colspan=4, sharex=a)  # shares the x axis with a (affects zooming)
+            if exchange == "GDAX_BTCUSD":
 
-                dataLink = "https://wex.nz/api/3/trades/btc_usd?limit=2000"
-                data = urllib.request.urlopen(dataLink)
-                data = data.read().decode("utf-8")  # this is in bytes so we have to decode it into strings
-                data = json.loads(data)  # read it into strings
-                # json is a list of lists, which is a dictionary, the key is BTC and the value is all the trading info
-                # but then the value is also a list of lists made of type and others...
-                data = data["btc_usd"]
-                data = pd.DataFrame(data)  # became a pandas dataset
+                dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %H-%p")
+                df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
 
-                data["datestamp"] = np.array(data["timestamp"]).astype("datetime64[s]")
-                allDates = data["datestamp"].tolist()  # for volume we need both the sell and buy dates
+                df = df.loc[startDate : endDate]
 
-                buys = data[(data["type"] == "bid")]
-                buyDates = (buys["datestamp"]).tolist()
+                # RESAMPLING
+                df_ohlc = df["Close"].resample("1D").ohlc()
+                df_volume = df["Volume To"].resample("1D").sum()
+                # print(df_ohlc.head())
 
-                sells = data[(data["type"] == "ask")]
-                sellDates = (sells["datestamp"]).tolist()
+                df_ohlc.reset_index(inplace=True)
+                df_ohlc["Date"] = df_ohlc["Date"].map(mdates.date2num)
 
-                volume = data["amount"]  # its part of the json, has to do with the trading volume
+                #ax1.clear()
+                #ax2.clear()
 
-                a.clear()
-                a.plot_date(buyDates, buys["price"], lightColor,
-                            label="buys")  # X parameter will be dates and the Y will be price
-                a.plot_date(sellDates, sells["price"], darkColor, label="sells")
+                ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
+                plt.setp(ax1.get_xticklabels(), visible=False)
+                ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
+                ax1.xaxis_date()  # show mdates as readable normal date
 
-                a2.fill_between(allDates, 0, volume, facecolors=volumeColor)
-
-                a.xaxis.set_major_locator(mticker.MaxNLocator(5))  # making sure dates wont run over each other
-                a.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d% %H:M:S"))
-                plt.setp(a.get_xticklabels(), visible=False)
-
-                a.legend(bbox_to_anchor=(0, 1.02, 1, .102), loc=3, ncol=2, borderaxespad=0)
-
-                title = "BTC-e BTCUSD Prices\nLast Price: " + str(data["price"][1999])
-                a.set_title(title)
-                priceData = data["price"].apply(float).tolist()
-
+                candlestick_ohlc(ax1, df_ohlc.values, width=candleWidth, colorup=lightColor, colordown=darkColor)
+                ax2.fill_between(df_volume.index.map(mdates.date2num), df_volume.values, 0,facecolors=volumeColor)
 
         except Exception as e:
             print("Failed because of:", e)
@@ -182,7 +139,7 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
         menubar.add_cascade(label="File", menu=filemenu)  # actually assign the file to menubar
 
         exchangeChoice = tk.Menu(menubar, tearoff=1)
-        exchangeChoice.add_command(label="BTC-e", command=lambda: changeExchange("BTC-e", "btce"))
+        exchangeChoice.add_command(label="GDAX_BTCUSD", command=lambda: changeExchange("GDAX_BTCUSD", "btce"))
         exchangeChoice.add_command(label="Bitfinex", command=lambda: changeExchange("Bitfinex", "bitfinex"))
         exchangeChoice.add_command(label="Bitstamp", command=lambda: changeExchange("Bitstamp", "bitstamp"))
         exchangeChoice.add_command(label="Huobi", command=lambda: changeExchange("Huobi", "huobi"))
@@ -206,13 +163,6 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
         OHLCI.add_command(label="3 Hour", command=lambda: changeSampleSize("3H", 0.096))
         menubar.add_cascade(label="OHLC Interval", menu=OHLCI)
 
-        mainI = tk.Menu(menubar, tearoff=1)
-        mainI.add_command(label="None", command=lambda: addMiddleIndicator("none"))
-        mainI.add_command(label="SMA", command=lambda: addMiddleIndicator("sma"))
-        mainI.add_command(label="EMA", command=lambda: addMiddleIndicator("ema"))
-        menubar.add_cascade(label="Main/middle Indicator", menu=mainI)
-
-
         tk.Tk.config(self, menu=menubar)
         self.frames = {}
 
@@ -222,7 +172,7 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
             frame.grid(row=0, column=0,
                        sticky="nsew")  # sticky is alignment north south east west, stretch everything to the sides of the window
 
-        self.show_frame(BTCe_Page)
+        self.show_frame(StartPage)
 
     def show_frame(self, cont):  # bings chosen frame to the front
         frame = self.frames[cont]
@@ -231,16 +181,20 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
 class StartPage(tk.Frame):  # inherit tk.Frame so we dont have to call upon that
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
-        label = ttk.Label(self, text=("""BAWSAQ CRYPTO trading application
-use at your own risk. There it is no promise
-of warranty"""), font=LARGE_FONT)
-        label.pack(pady=10, padx=10)
 
-        button1 = ttk.Button(self, text="Agree", command=lambda: controller.show_frame(BTCe_Page))
-        button1.pack()
 
-        button2 = ttk.Button(self, text="Disagree", command=quit)
-        button2.pack()
+        label_1 = ttk.Label(self, text=("BUY BTC"), font=LARGE_FONT)
+        label_2 = ttk.Label(self, text=("SELL BTC"), font=LARGE_FONT)
+        button_1 = ttk.Button(self, text="BUY", command=lambda: controller.show_frame(BTCe_Page))
+        button_2 = ttk.Button(self, text="SELL", command=quit)
+        button_3 = ttk.Button(self, text="NaN", command=quit)
+
+        label_1.grid(row=0, column=0, sticky="E")
+        label_2.grid(row=1, column=0, sticky="E")
+
+        button_1.grid(row=0, column=1)
+        button_2.grid(row=1, column=1)
+        button_3.grid(row=1, column=2)
 
 class PageOne(tk.Frame):
 
@@ -256,18 +210,29 @@ class BTCe_Page(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
-        label = ttk.Label(self, text="Graph Page", font=LARGE_FONT)  # this is just an object that we defined, we havent done anything with it yet
-        label.pack(pady=10, padx=10)
-        button1 = ttk.Button(self, text="Back to Home", command=lambda: controller.show_frame(StartPage))
-        button1.pack()
 
         canvas = FigureCanvasTkAgg(f, self)
-        canvas.show()
-        canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+        canvas.draw()
+
+        # INIT UI ELEMENTS
+        label = ttk.Label(self, text="Graph Page", font=LARGE_FONT)
+        button1 = ttk.Button(self, text="Back to Home", command=lambda: controller.show_frame(StartPage))
+        button_2 = ttk.Button(self, text="SELL", command=quit)
+
+        # ASSIGN LOCATION
+        label.grid(row=0, column=0)
+        canvas.get_tk_widget().grid(row=1, column=0)
+        canvas._tkcanvas.grid(row=2, column=0)
+
+        button_2.grid(row=1, column=1)
+
+
+        #canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+        #canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
 
         toolbar = NavigationToolbar2TkAgg(canvas, self)  # we are sending the toolbar to the canvas
         toolbar.update()
-        canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
 
 app = SeaofBTCapp()
