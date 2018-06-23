@@ -56,19 +56,19 @@ class SeaofBTCapp(tk.Tk): # inherit from the tk class
         #tk.TK.iconbitmap(self, default="icon_Name.ico")
         tk.Tk.wm_title(self, "BAWSAQ")
 
-        container = tk.Frame(self) # the actual main windo
+        container = tk.Frame(self) # the actual main window
         container.pack(side= "top", fill="both", expand= True)
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
         self.frames = { }
 
-        for F in (StartPage, BTCe_Page):
-            frame = F(container, self)
-            self.frames[F] = frame
-            frame.grid(row= 0, column= 0, sticky="nsew") # sticky is alignment north south east west, stretch everything to the sides of the window
+        frame = BTCe_Page(container, self)
+        self.frames[BTCe_Page] = frame
+        frame.grid(row=0, column=0,
+                   sticky="nsew")  # sticky is alignment north south east west, stretch everything to the sides of the window
 
-        self.show_frame(StartPage)
+        self.show_frame(BTCe_Page)
 
     def show_frame(self,cont): # bings chosen frame to the front
         frame = self.frames[cont]
@@ -91,21 +91,13 @@ of warranty"""),font=LARGE_FONT)
                         command=quit)
         button2.pack()
 
-class PageOne(tk.Frame):
-
-    def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
-        label = ttk.Label(self, text=("Page One"),font=LARGE_FONT)
-        label.pack(pady=10, padx=10)
-        button1 = ttk.Button(self, text= "Back to Home",
-                        command=lambda: controller.show_frame(StartPage))
-        button1.pack()
-
 
 class BTCe_Page(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+
+
         label = ttk.Label(self, text="Graph Page",
                          font=LARGE_FONT)  # this is just an object that we defined, we havent done anything with it yet
         label.pack(pady=10, padx=10)

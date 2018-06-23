@@ -41,7 +41,6 @@ darkColor = "#824B4B"
 lightColor = "#4B8251"
 volumeColor = "#7CA1B4"
 
-
 # THESE ARE DEFAULTS WHICH THE USER CAN CHANGE LATER
 exchange = "GDAX_BTCUSD"
 DatCounter = 9000  # force an update instead of waiting 30 seconds, counter for that is this
@@ -56,7 +55,6 @@ middleIndicator = "none"
 chartLoad = True
 
 
-
 def changeExchange(toWhat, pn):  # program name
     global exchange
     global DatCounter
@@ -65,6 +63,7 @@ def changeExchange(toWhat, pn):  # program name
     exchange = toWhat
     programName = pn
     DatCounter = 9000
+
 
 def popupmsg(msg):  # a miniature version of a tk window
     popup = tk.Tk()
@@ -79,6 +78,7 @@ def popupmsg(msg):  # a miniature version of a tk window
     B1.pack()  # just naturally go under the label
     popup.mainloop()
 
+
 def animate(i):
     global refreshRate
     global DatCounter
@@ -86,11 +86,10 @@ def animate(i):
     if chartLoad:
         try:
             if exchange == "GDAX_BTCUSD":
-
                 dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %H-%p")
                 df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
 
-                df = df.loc[startDate : endDate]
+                df = df.loc[startDate: endDate]
 
                 # RESAMPLING
                 df_ohlc = df["Close"].resample("1D").ohlc()
@@ -100,8 +99,8 @@ def animate(i):
                 df_ohlc.reset_index(inplace=True)
                 df_ohlc["Date"] = df_ohlc["Date"].map(mdates.date2num)
 
-                #ax1.clear()
-                #ax2.clear()
+                # ax1.clear()
+                # ax2.clear()
 
                 ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
                 plt.setp(ax1.get_xticklabels(), visible=False)
@@ -109,13 +108,13 @@ def animate(i):
                 ax1.xaxis_date()  # show mdates as readable normal date
 
                 candlestick_ohlc(ax1, df_ohlc.values, width=candleWidth, colorup=lightColor, colordown=darkColor)
-                ax2.fill_between(df_volume.index.map(mdates.date2num), df_volume.values, 0,facecolors=volumeColor)
+                ax2.fill_between(df_volume.index.map(mdates.date2num), df_volume.values, 0, facecolors=volumeColor)
 
         except Exception as e:
             print("Failed because of:", e)
 
         else:
-            DatCounter += 1 # INCREMENT COUNTER
+            DatCounter += 1  # INCREMENT COUNTER
 
 
 class SeaofBTCapp(tk.Tk):  # inherit from the tk class
@@ -169,7 +168,8 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
         for F in (StartPage, BTCe_Page):
             frame = F(container, self)
             self.frames[F] = frame
-            frame.grid(row=0, column=0, sticky="nsew")  # sticky is alignment north south east west, stretch everything to the sides of the window
+            frame.grid(row=0, column=0,
+                       sticky="nsew")  # sticky is alignment north south east west, stretch everything to the sides of the window
 
         self.show_frame(BTCe_Page)
 
@@ -177,10 +177,10 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
         frame = self.frames[cont]
         frame.tkraise()  # bring frame to the front
 
+
 class StartPage(tk.Frame):  # inherit tk.Frame so we dont have to call upon that
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
-
 
         label_1 = ttk.Label(self, text=("BUY BTC"), font=LARGE_FONT)
         label_2 = ttk.Label(self, text=("SELL BTC"), font=LARGE_FONT)
@@ -195,15 +195,16 @@ class StartPage(tk.Frame):  # inherit tk.Frame so we dont have to call upon that
         button_2.grid(row=1, column=1)
         button_3.grid(row=1, column=2)
 
+
 class BTCe_Page(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
 
         # create all of the main containers
         top_frame = tk.Frame(self, bg='cyan', width=450, height=50, pady=3)
-        center = tk.Frame(self, bg='gray2', width=50, height=40, padx=3, pady=3)
+        center = tk.Frame(self, bg='pink', width=50, height=40, padx=3, pady=3)
         btm_frame = tk.Frame(self, bg='white', width=450, height=45, pady=3)
-        btm_frame2 = tk.Frame(self, bg='lavender', width=450, height=60, pady=3)
+        btm_frame2 = tk.Frame(self, bg='green', width=450, height=60, pady=3)
 
         # layout all of the main containers
         self.grid_rowconfigure(1, weight=1)
@@ -215,14 +216,14 @@ class BTCe_Page(tk.Frame):
         btm_frame2.grid(row=4, sticky="ew")
 
         # create the widgets for the top frame
-        model_label = ttk.Label(top_frame, text='Model Dimensions')
+        label = ttk.Label(top_frame, text="Graph Page", font=LARGE_FONT)
         width_label = ttk.Label(top_frame, text='Width:')
         length_label = ttk.Label(top_frame, text='Length:')
         entry_W = ttk.Entry(top_frame, background="pink")
         entry_L = ttk.Entry(top_frame, background="orange")
 
         # layout the widgets in the top frame
-        model_label.grid(row=0, columnspan=3)
+        label.grid(row=0 ,columnspan=6, sticky="ew")
         width_label.grid(row=1, column=0)
         length_label.grid(row=1, column=2)
         entry_W.grid(row=1, column=1)
@@ -240,8 +241,12 @@ class BTCe_Page(tk.Frame):
         ctr_mid.grid(row=0, column=1, sticky="nsew")
         ctr_right.grid(row=0, column=2, sticky="ns")
 
+
+
+        button1 = ttk.Button(ctr_mid, text="Back to Home", command=lambda: controller.show_frame(StartPage))
+        button1.grid(row=0, columnspan=3)
+
         '''
-        
         label = ttk.Label(self, text="Graph Page", font=LARGE_FONT)  # this is just an object that we defined, we havent done anything with it yet
         label.pack(pady=10, padx=10)
         button1 = ttk.Button(self, text="Back to Home", command=lambda: controller.show_frame(StartPage))
@@ -255,6 +260,7 @@ class BTCe_Page(tk.Frame):
         toolbar.update()
         canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         '''
+
 
 app = SeaofBTCapp()
 app.geometry("1280x720")
