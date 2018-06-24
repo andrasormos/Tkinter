@@ -27,11 +27,12 @@ import numpy as np
 #   \ - alt + ü
 #   > < - alt + shift + Y    or X but that kills window<
 
+# STYLING
 LARGE_FONT = ("Verdana", 12)
 NORM_FONT = ("Verdana", 10)
 SMALL_FONT = ("Verdana", 8)
 style.use("ggplot")
-f = plt.figure()
+fig = plt.figure()
 
 # MY VARIABLES
 startDate = "2018-1-1 01:00:00"
@@ -40,6 +41,9 @@ candleWidth = 0.5
 darkColor = "#824B4B"
 lightColor = "#4B8251"
 volumeColor = "#7CA1B4"
+timeSpan = "1M"
+candleType = "1D"
+
 
 # THESE ARE DEFAULTS WHICH THE USER CAN CHANGE LATER
 exchange = "GDAX_BTCUSD"
@@ -54,6 +58,8 @@ bottomIndicator = "none"
 middleIndicator = "none"
 chartLoad = True
 
+def cunt():
+    print("Cunt")
 
 def changeExchange(toWhat, pn):  # program name
     global exchange
@@ -63,7 +69,6 @@ def changeExchange(toWhat, pn):  # program name
     exchange = toWhat
     programName = pn
     DatCounter = 9000
-
 
 def popupmsg(msg):  # a miniature version of a tk window
     popup = tk.Tk()
@@ -78,40 +83,55 @@ def popupmsg(msg):  # a miniature version of a tk window
     B1.pack()  # just naturally go under the label
     popup.mainloop()
 
+def changeCandleType(type):
+    global candleType
+    global DatCounter
+    candleType = type
+    DatCounter = 9000
+    #plt.clf()
 
 def animate(i):
     global refreshRate
     global DatCounter
 
+    print("DatCounter:",DatCounter)
+
     if chartLoad:
-        try:
-            if exchange == "GDAX_BTCUSD":
-                dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %H-%p")
-                df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
+        if DatCounter > 0:
+            try:
+                if exchange == "GDAX_BTCUSD":
+                    print("New Graph")
+                    #plt.clf()
 
-                df = df.loc[startDate: endDate]
+                    ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
+                    ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
 
-                # RESAMPLING
-                df_ohlc = df["Close"].resample("1D").ohlc()
-                df_volume = df["Volume To"].resample("1D").sum()
-                # print(df_ohlc.head())
+                    plt.setp(ax1.get_xticklabels(), visible=False)
 
-                df_ohlc.reset_index(inplace=True)
-                df_ohlc["Date"] = df_ohlc["Date"].map(mdates.date2num)
+                    dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %H-%p")
+                    df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
+                    df = df.loc[startDate: endDate]
 
-                # ax1.clear()
-                # ax2.clear()
+                    # RESAMPLING
+                    df_ohlc = df["Close"].resample(candleType).ohlc()
+                    df_volume = df["Volume To"].resample(candleType).sum()
+                    # print(df_ohlc.head())
 
-                ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
-                plt.setp(ax1.get_xticklabels(), visible=False)
-                ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
-                ax1.xaxis_date()  # show mdates as readable normal date
+                    df_ohlc.reset_index(inplace=True)
+                    df_ohlc["Date"] = df_ohlc["Date"].map(mdates.date2num)
 
-                candlestick_ohlc(ax1, df_ohlc.values, width=candleWidth, colorup=lightColor, colordown=darkColor)
-                ax2.fill_between(df_volume.index.map(mdates.date2num), df_volume.values, 0, facecolors=volumeColor)
+                    ax1.clear()
 
-        except Exception as e:
-            print("Failed because of:", e)
+                    ax1.xaxis_date()  # show mdates as readable normal date
+                    candlestick_ohlc(ax1, df_ohlc.values, width=candleWidth, colorup=lightColor, colordown=darkColor)
+                    ax2.fill_between(df_volume.index.map(mdates.date2num), df_volume.values, 0, facecolors=volumeColor)
+
+
+
+                    DatCounter = 0  # RESET COUNTER
+
+            except Exception as e:
+                print("Failed because of:", e)
 
         else:
             DatCounter += 1  # INCREMENT COUNTER
@@ -127,6 +147,9 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
 
         container = tk.Frame(self)  # the actual main windo
         container.pack(side="top", fill="both", expand=True)
+        #container.grid(row=1, sticky="nsew")
+
+
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
@@ -177,94 +200,124 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
         frame = self.frames[cont]
         frame.tkraise()  # bring frame to the front
 
-
 class StartPage(tk.Frame):  # inherit tk.Frame so we dont have to call upon that
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
 
-        label_1 = ttk.Label(self, text=("BUY BTC"), font=LARGE_FONT)
-        label_2 = ttk.Label(self, text=("SELL BTC"), font=LARGE_FONT)
-        button_1 = ttk.Button(self, text="BUY", command=lambda: controller.show_frame(BTCe_Page))
-        button_2 = ttk.Button(self, text="SELL", command=quit)
-        button_3 = ttk.Button(self, text="NaN", command=quit)
+        label_1 = ttk.Label(self, text=("TRADE FROM HISTORICAL CHART DATA"), font=LARGE_FONT)
+        button_1 = ttk.Button(self, text="NEW GAME", command=lambda: controller.show_frame(BTCe_Page))
+        button_2 = ttk.Button(self, text="QUIT", command=quit)
 
         label_1.grid(row=0, column=0, sticky="E")
-        label_2.grid(row=1, column=0, sticky="E")
-
         button_1.grid(row=0, column=1)
         button_2.grid(row=1, column=1)
-        button_3.grid(row=1, column=2)
-
 
 class BTCe_Page(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
 
-        # create all of the main containers
+        # MAIN CONTAINER CREATION
         top_frame = tk.Frame(self, bg='cyan', width=450, height=50, pady=3)
-        center = tk.Frame(self, bg='pink', width=50, height=40, padx=3, pady=3)
+        center = tk.Frame(self, bg='gray2', width=50, height=40, padx=3, pady=3)
         btm_frame = tk.Frame(self, bg='white', width=450, height=45, pady=3)
-        btm_frame2 = tk.Frame(self, bg='green', width=450, height=60, pady=3)
-
-        # layout all of the main containers
+        btm_frame2 = tk.Frame(self, bg='lavender', width=450, height=60, pady=3)
+        # ROWCONFIGURE
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
-
+        # PLACE MAIN CONTAINERS
         top_frame.grid(row=0, sticky="ew")
         center.grid(row=1, sticky="nsew")
         btm_frame.grid(row=3, sticky="ew")
         btm_frame2.grid(row=4, sticky="ew")
 
-        # create the widgets for the top frame
-        label = ttk.Label(top_frame, text="Graph Page", font=LARGE_FONT)
+        # TOP FRAME
+        model_label = ttk.Label(top_frame, text='Model Dimensions')
         width_label = ttk.Label(top_frame, text='Width:')
         length_label = ttk.Label(top_frame, text='Length:')
         entry_W = ttk.Entry(top_frame, background="pink")
         entry_L = ttk.Entry(top_frame, background="orange")
-
-        # layout the widgets in the top frame
-        label.grid(row=0 ,columnspan=6, sticky="ew")
+        # PLACE WIDGETS TO TOP FRAME
+        model_label.grid(row=0, columnspan=3)
         width_label.grid(row=1, column=0)
         length_label.grid(row=1, column=2)
         entry_W.grid(row=1, column=1)
         entry_L.grid(row=1, column=3)
 
-        # create the center widgets
+        # ROWCONFIGURE - CENTER
         center.grid_rowconfigure(0, weight=1)
         center.grid_columnconfigure(1, weight=1)
-
+        # CENTER FRAME
         ctr_left = tk.Frame(center, bg='blue', width=100, height=190)
-        ctr_mid = tk.Frame(center, bg='yellow', width=250, height=190, padx=3, pady=3)
+        ctr_mid =  tk.Frame(center, bg='yellow', width=250, height=190, padx=3, pady=3)
         ctr_right = tk.Frame(center, bg='green', width=100, height=190, padx=3, pady=3)
 
+        # PLACE CENTER FRAMES
         ctr_left.grid(row=0, column=0, sticky="ns")
+
         ctr_mid.grid(row=0, column=1, sticky="nsew")
+        ctr_mid.grid_rowconfigure(0, weight=1)
+        ctr_mid.grid_columnconfigure(1, weight=1)
+
         ctr_right.grid(row=0, column=2, sticky="ns")
 
+        # MID COLUMN - GRAPH
+        graph = FigureCanvasTkAgg(fig, ctr_mid)
+        graph.get_tk_widget().grid(row=0, column=1, sticky="nsew")
+        graph.draw()
+
+        # LEFT BUTTON COLUMN
+        candle_time = ttk.Label(ctr_left, text='Candle Time')
+        candle1H = ttk.Button(ctr_left, text="1 Hour", command=lambda: changeCandleType("1H"))
+        candle4H = ttk.Button(ctr_left, text="4 Hours", command=lambda: changeCandleType("4H"))
+        candle1D = ttk.Button(ctr_left, text="1 Day", command=lambda: changeCandleType("1D"))
+        candle1W = ttk.Button(ctr_left, text="1 Week", command=lambda: changeCandleType("1W"))
+
+        timeSpan = ttk.Label(ctr_left, text='Time Span')
+        timeSpan1D = ttk.Button(ctr_left, text="1 Day", command=lambda: controller.show_frame(BTCe_Page))
+        timeSpan1W = ttk.Button(ctr_left, text="1 Week", command=lambda: controller.show_frame(BTCe_Page))
+        timeSpan1M = ttk.Button(ctr_left, text="4 Weeks", command=lambda: controller.show_frame(BTCe_Page))
+        timeSpanFull = ttk.Button(ctr_left, text="Full", command=lambda: controller.show_frame(BTCe_Page))
+
+        candle_time.grid(row=0, columnspan=3,padx=10, pady=10)
+        candle1H.grid(row=1, columnspan=3)
+        candle4H.grid(row=2, columnspan=3)
+        candle1D.grid(row=3, columnspan=3)
+        candle1W.grid(row=4, columnspan=3)
+
+        timeSpan.grid(row=6, columnspan=3, padx=10, pady=10)
+        timeSpan1D.grid(row=7, columnspan=3)
+        timeSpan1W.grid(row=8, columnspan=3)
+        timeSpan1M.grid(row=9, columnspan=3)
+        timeSpanFull.grid(row=10, columnspan=3)
+
+        # RIGHT BUTTON COLUMN
+        tradeBTC_lbl = ttk.Label(ctr_right, text='TRADE')
+        buyBTC_btn = ttk.Button(ctr_right, text="BUY BTC", command=lambda: cunt())
+        sellBTC_btn = ttk.Button(ctr_right, text="SELL BTC", command=lambda: controller.show_frame(BTCe_Page))
+        skip_btn = ttk.Button(ctr_right, text="SKIP", command=lambda: controller.show_frame(BTCe_Page))
+
+        timeSpan = ttk.Label(ctr_right, text='Time Span')
+        timeSpan1D = ttk.Button(ctr_right, text="1 Day", command=lambda: controller.show_frame(BTCe_Page))
+        timeSpan1W = ttk.Button(ctr_right, text="1 Week", command=lambda: controller.show_frame(BTCe_Page))
+        timeSpan1M = ttk.Button(ctr_right, text="4 Weeks", command=lambda: controller.show_frame(BTCe_Page))
+
+        tradeBTC_lbl.grid(row=0, columnspan=3,padx=10, pady=10)
+        buyBTC_btn.grid(row=1, columnspan=3)
+        sellBTC_btn.grid(row=2, columnspan=3)
+        skip_btn.grid(row=3, columnspan=3)
+
+        tradeBTC_lbl.grid(row=6, columnspan=3, padx=10, pady=10)
+        buyBTC_btn.grid(row=7, columnspan=3)
+        sellBTC_btn.grid(row=8, columnspan=3)
+        skip_btn.grid(row=9, columnspan=3)
 
 
-        button1 = ttk.Button(ctr_mid, text="Back to Home", command=lambda: controller.show_frame(StartPage))
-        button1.grid(row=0, columnspan=3)
-
-        '''
-        label = ttk.Label(self, text="Graph Page", font=LARGE_FONT)  # this is just an object that we defined, we havent done anything with it yet
-        label.pack(pady=10, padx=10)
-        button1 = ttk.Button(self, text="Back to Home", command=lambda: controller.show_frame(StartPage))
-        button1.pack()
-
-        canvas = FigureCanvasTkAgg(f, self)
-        canvas.show()
-        canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
-
-        toolbar = NavigationToolbar2TkAgg(canvas, self)  # we are sending the toolbar to the canvas
-        toolbar.update()
-        canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-        '''
 
 
 app = SeaofBTCapp()
 app.geometry("1280x720")
-ani = animation.FuncAnimation(f, animate, interval=2000)
+ani = animation.FuncAnimation(fig, animate, interval=2000)
+
 app.mainloop()
 
 
