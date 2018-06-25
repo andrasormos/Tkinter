@@ -19,6 +19,14 @@ import pandas as pd
 import numpy as np
 
 from GameEngine import PlayGame
+#import GameEngine as GE
+
+gameEngine = PlayGame()
+gameEngine.startGame()
+
+
+
+#test.printFromClass()
 
 #   {} - alt + 7
 #   [] - alt + 8
@@ -26,8 +34,6 @@ from GameEngine import PlayGame
 #   # - alt +shift + 3
 #   \ - alt + ü
 #   > < - alt + shift + Y    or X but that kills window<
-
-test = PlayGame()
 
 # STYLING
 LARGE_FONT = ("Verdana", 12)
@@ -37,8 +43,8 @@ style.use("ggplot")
 fig = plt.figure(1)
 
 # MY VARIABLES
-startDate = "2018-1-1 01:00:00"
-endDate = "2018-2-1 01:00:00"
+
+
 candleWidth = 0.5
 darkColor = "#824B4B"
 lightColor = "#4B8251"
@@ -83,20 +89,16 @@ def changeCandleType(type, width):
     print("Changed To:",type)
     updateChart()
 
-
 def updateChart():
-    print("Clicked Update")
     plt.clf()
-    print("New Graph", "Candle Type:", candleType)
-
     ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
     ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
-
     plt.setp(ax1.get_xticklabels(), visible=False)
 
-    dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %H-%p")
+    dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %I-%p")
     df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
     df = df.loc[startDate: endDate]
+
 
     # RESAMPLING
     df_ohlc = df["Close"].resample(candleType).ohlc()
@@ -117,16 +119,21 @@ def drawChart():
     try:
         if exchange == "GDAX_BTCUSD":
             plt.clf()
-            print("New Graph", "Candle Type:", candleType)
-
             ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
             ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
-
             plt.setp(ax1.get_xticklabels(), visible=False)
 
-            dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %H-%p")
+            startDate = gameEngine.getStartDate()
+            endDate = gameEngine.getEndDate()
+
+            print("start and end:", startDate, " - ", endDate)
+            print(type(startDate))
+
+
+            dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %I-%p")
             df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
-            df = df.loc[startDate: endDate]
+            df = df.loc[startDate : endDate]
+
 
             # RESAMPLING
             df_ohlc = df["Close"].resample(candleType).ohlc()
@@ -293,10 +300,6 @@ class BTCe_Page(tk.Frame):
 
 app = SeaofBTCapp()
 app.geometry("1280x720")
-#ani = animation.FuncAnimation(fig, animate, interval=2000)
-
-
-#test = drawGraph()
 test = drawChart()
 
 app.mainloop()
