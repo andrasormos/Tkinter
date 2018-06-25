@@ -25,7 +25,6 @@ gameEngine = PlayGame()
 gameEngine.startGame()
 
 
-
 #test.printFromClass()
 
 #   {} - alt + 7
@@ -44,13 +43,18 @@ fig = plt.figure(1)
 
 # MY VARIABLES
 
-
-candleWidth = 0.5
+candleType = "4H"
+candleWidth = 0.08
 darkColor = "#824B4B"
 lightColor = "#4B8251"
 volumeColor = "#7CA1B4"
-timeSpan = "1M"
-candleType = "1D"
+
+startDate = gameEngine.getStartDate()
+endDate = gameEngine.getEndDate()
+
+dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %I-%p")
+df_orig = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
+df = df_orig.loc[startDate : endDate]
 
 
 # THESE ARE DEFAULTS WHICH THE USER CAN CHANGE LATER
@@ -65,7 +69,8 @@ bottomIndicator = "none"
 middleIndicator = "none"
 chartLoad = True
 
-
+def action(action):
+    updateChart()
 
 def popupmsg(msg):  # a miniature version of a tk window
     popup = tk.Tk()
@@ -90,15 +95,23 @@ def changeCandleType(type, width):
     updateChart()
 
 def updateChart():
+    global endDate
     plt.clf()
     ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
     ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
     plt.setp(ax1.get_xticklabels(), visible=False)
 
-    dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %I-%p")
-    df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
-    df = df.loc[startDate: endDate]
+    endDate = gameEngine.nextStep(action)
+    print("NEXT TIME HOUR:", df_orig[endDate])
+    #print(df)
 
+
+    #nextLine = df_orig[endDate]
+    #nextLine = nextLine.join(df)
+    # how to append or join dataframes together
+
+    # This one works but might be a slow solution
+    df = df_orig.loc[startDate: endDate]
 
     # RESAMPLING
     df_ohlc = df["Close"].resample(candleType).ohlc()
@@ -122,18 +135,6 @@ def drawChart():
             ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
             ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
             plt.setp(ax1.get_xticklabels(), visible=False)
-
-            startDate = gameEngine.getStartDate()
-            endDate = gameEngine.getEndDate()
-
-            print("start and end:", startDate, " - ", endDate)
-            print(type(startDate))
-
-
-            dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %I-%p")
-            df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
-            df = df.loc[startDate : endDate]
-
 
             # RESAMPLING
             df_ohlc = df["Close"].resample(candleType).ohlc()
@@ -278,14 +279,9 @@ class BTCe_Page(tk.Frame):
 
         # RIGHT BUTTON COLUMN
         tradeBTC_lbl = ttk.Label(ctr_right, text='TRADE')
-        buyBTC_btn = ttk.Button(ctr_right, text="BUY BTC", command=lambda: controller.show_frame(StartPage))
-        sellBTC_btn = ttk.Button(ctr_right, text="SELL BTC", command=lambda: controller.show_frame(BTCe_Page))
-        skip_btn = ttk.Button(ctr_right, text="SKIP", command=lambda: controller.show_frame(BTCe_Page))
-
-        timeSpan = ttk.Label(ctr_right, text='Time Span')
-        timeSpan1D = ttk.Button(ctr_right, text="1 Day", command=lambda: controller.show_frame(BTCe_Page))
-        timeSpan1W = ttk.Button(ctr_right, text="1 Week", command=lambda: controller.show_frame(BTCe_Page))
-        timeSpan1M = ttk.Button(ctr_right, text="4 Weeks", command=lambda: controller.show_frame(BTCe_Page))
+        buyBTC_btn = ttk.Button(ctr_right, text="BUY BTC", command=lambda: action("Buy BTC"))
+        sellBTC_btn = ttk.Button(ctr_right, text="SELL BTC", command=lambda: action("Sell BTC"))
+        skip_btn = ttk.Button(ctr_right, text="SKIP", command=lambda: action("Skip"))
 
         tradeBTC_lbl.grid(row=0, columnspan=3,padx=10, pady=10)
         buyBTC_btn.grid(row=1, columnspan=3)
