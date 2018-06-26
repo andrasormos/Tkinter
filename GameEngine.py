@@ -23,6 +23,7 @@ class PlayGame(object):
         self.cashBalance = 5000
         self.amountToSpend = 500
         self.BTC_Balance = 0
+        self.currentBTCPrice = 0
 
 
     def randomChart(self):

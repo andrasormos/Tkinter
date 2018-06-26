@@ -33,6 +33,8 @@ df_segment = GE.getChartData()
 fullBalance = GE.fullBalance
 cashBalance = GE.cashBalance
 btcBalance = GE.BTC_Balance
+currentDate = GE.endDate
+currentBTCPrice = GE.currentBTCPrice
 
 nextRow = pd.DataFrame
 
@@ -58,10 +60,18 @@ resampleSize = "15Min"
 def action(action):
     global nextRow
 
-    nextRow = GE.nextStep(action)
+    if action == "Buy BTC":
+        nextRow = GE.nextStep(action)
+        updateChart()
 
     if action == "Skip 4x":
         for _ in range(0, 3):
+            nextRow = GE.nextStep(action)
+            updateChart()
+
+    if action == "Skip 48x":
+        for _ in range(0, 47):
+            nextRow = GE.nextStep(action)
             updateChart()
 
     else:
@@ -95,6 +105,8 @@ def updateChart():
     global fullBalance
     global cashBalance
     global btcBalance
+    global currentDate
+    global currentBTCPrice
 
     plt.clf()
     ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
@@ -115,8 +127,11 @@ def updateChart():
     fullBalance = GE.fullBalance
     cashBalance = GE.cashBalance
     btcBalance = GE.BTC_Balance
+    currentDate = GE.endDate
+    currentBTCPrice = GE.currentBTCPrice
 
-    app.gamePage.updateBalance(fullBalance, cashBalance, btcBalance)
+
+    app.gamePage.updateBalance(fullBalance, cashBalance, btcBalance, currentDate, currentBTCPrice)
 
 def drawChart():
     try:
@@ -177,10 +192,12 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
 
 class BTCe_Page(tk.Frame):
 
-    def updateBalance(self, full, cash, btc):
+    def updateBalance(self, full, cash, btc, currentDate ,currentBTCPrice):
         self.TOTAL_Balance_val_lbl.configure(text=full)
         self.USD_Balance_val_lbl.configure(text=cash)
         self.BTC_Balance_val_lbl.configure(text=btc)
+        self.currentDate_val_lbl.configure(text=currentDate)
+        self.currentBTCPrice_val_lbl.configure(text=currentBTCPrice)
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -203,12 +220,22 @@ class BTCe_Page(tk.Frame):
         btm_frame2.grid(row=4, sticky="ew")
 
         # TOP FRAME
-        Title = ttk.Label(top_frame, text='BTC Price')
-        Title.grid_rowconfigure(1, weight=1)
-        Title.grid_columnconfigure(0, weight=1)
+        #Title.grid_rowconfigure(1, weight=1)
+        #Title.grid_columnconfigure(0, weight=1)
 
-        # PLACE WIDGETS TO TOP FRAME
-        Title.grid(row=0, columnspan=3, sticky="nsew")
+        currentDate_lbl = ttk.Label(top_frame, text='DATE:')
+        self.currentDate_val_lbl = ttk.Label(top_frame, text=currentDate)
+        currentBTCPrice_lbl = ttk.Label(top_frame, text='BTC PRICE:')
+        self.currentBTCPrice_val_lbl = ttk.Label(top_frame, text=currentBTCPrice)
+
+        self.currentDate_val_lbl.grid_rowconfigure(1, weight=1)
+        self.currentDate_val_lbl.grid_columnconfigure(0, weight=1)
+
+        currentDate_lbl.grid(row=0, column=0, columnspan=1, rowspan=1, sticky="w")
+        self.currentDate_val_lbl.grid(row=0, column=1, columnspan=1, rowspan=1, sticky="w")
+        currentBTCPrice_lbl.grid(row=1, column=0, columnspan=1, rowspan=1, sticky="w")
+        self.currentBTCPrice_val_lbl.grid(row=1, column=1, columnspan=1, rowspan=1, sticky="w")
+
 
         # ROWCONFIGURE - CENTER
         center.grid_rowconfigure(0, weight=1)
@@ -230,6 +257,10 @@ class BTCe_Page(tk.Frame):
         # MID COLUMN - GRAPH
         graph = FigureCanvasTkAgg(fig, ctr_mid)
         graph.get_tk_widget().grid(row=0, column=1, sticky="nsew")
+
+        # UPPER MID
+
+
 
         # LEFT BUTTON COLUMN
         candle_time = ttk.Label(ctr_left, text='Candle Time')
