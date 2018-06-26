@@ -3,10 +3,6 @@ from random import randint
 import pandas as pd
 import numpy as np
 
-#self.startDate = "2018-01-01 01:00:00"
-#self.endDate = "2018-01-02 01:00:00"
-
-
 class PlayGame(object):
     def __init__(self):
         self.gameIsRunning = True
@@ -14,22 +10,26 @@ class PlayGame(object):
     def startGame(self):
         print("Game Started")
 
+        self.initialTimeRange = 24
         dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %I-%p")
         self.df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
 
         self.startDate, self.endDate, self.startIndex, self.endIndex = self.randomChart()
         self.df_segment = self.df.loc[self.startDate : self.endDate]
 
-        print("clss_START:",self.startIndex, " - ", self.startDate, "\n", "clss_END: ", self.endIndex , " - ", self.endDate)
+        print("c_START:",self.startIndex," - ",self.startDate,"\n","c_END: ",self.endIndex, " - ",self.endDate)
 
-        self.balance = 5000
+        self.fullBalance = 5000
+        self.cashBalance = 5000
+        self.amountToSpend = 500
+        self.BTC_Balance = 0
 
 
     def randomChart(self):
         hoursIndexCount = len(self.df.index)
 
         startIndex = randint(1600, hoursIndexCount)
-        endIndex = startIndex - 24
+        endIndex = startIndex - self.initialTimeRange
 
         startDate = self.df.index[startIndex]
         endDate = self.df.index[endIndex - 1]
@@ -39,20 +39,21 @@ class PlayGame(object):
 
         return startDateStr, endDateStr, startIndex, endIndex
 
-
     def nextStep(self, action):
-        if action == "Buy BTC":
-            self.balance = self.balance - 500
-            print("CURRENT BALANCE", self.balance)
-
-        # NEXT DATE AND PRICE
+        # NEXT ROW
         self.endIndex = self.endIndex - 1
         self.endDate = self.df.index[self.endIndex - 1]
+        self.nextRow = self.df.loc[[self.endDate]]
+        self.df_segment = pd.concat([self.nextRow, self.df_segment])
 
-        endDateStr = self.endDate.strftime("%Y-%m-%d %H:%M:%S")
+        self.currentBTCPrice = self.nextRow["Close"][0]
+        print("c_BTC PPRICE: ", self.currentBTCPrice)
 
-        return endDateStr
+        if action == "Buy BTC":
+            self.cashBalance = self.cashBalance - self.amountToSpend
+            self.BTC_Balance = round((self.BTC_Balance + (self.amountToSpend / self.currentBTCPrice)), 5)
 
+        return self.nextRow
 
     def getStartDate(self):
         return self.startDate
@@ -63,6 +64,9 @@ class PlayGame(object):
     def getChartData(self):
         return self.df_segment
 
+    def getBalance(self):
+        return self.fullBalance
+
 
 
 
@@ -70,4 +74,5 @@ if __name__ == "__main__":
     test = PlayGame()
     test.startGame()
     test.nextStep("Buy BTC")
-    test.nextStep("Buy BTC")
+
+
