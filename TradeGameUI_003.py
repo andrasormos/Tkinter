@@ -1,8 +1,7 @@
+import pandas as pd
 import tkinter as tk
 from tkinter import ttk
 import matplotlib
-import datetime as dt
-
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 # from matplotlib.figure import Figure
@@ -13,12 +12,12 @@ import matplotlib.dates as mdates
 import matplotlib.ticker as mticker
 import mpl_finance
 from mpl_finance import candlestick_ohlc
+import numpy as np
 import urllib
 import json
-import pandas as pd
-import numpy as np
+import datetime as dt
 
-# failed in the non-tick animate:  'Timestamp' object has no attribute 'to_pydatetme'
+from GameEngine import PlayGame
 
 #   {} - alt + 7
 #   [] - alt + 8
@@ -26,53 +25,44 @@ import numpy as np
 #   # - alt +shift + 3
 #   \ - alt + ü
 #   > < - alt + shift + Y    or X but that kills window<
+#   * - alt + shift + ?
+
+GE = PlayGame()
+GE.startGame()
+df_segment = GE.getChartData()
+fullBalance = GE.fullBalance
+cashBalance = GE.cashBalance
+btcBalance = GE.BTC_Balance
+currentDate = GE.endDate
+currentBTCPrice = GE.currentBTCPrice
+initialBalance = GE.initialBalance
+
+rekt = True
+
+nextRow = pd.DataFrame
+
+showDates = True
 
 # STYLING
 LARGE_FONT = ("Verdana", 12)
 NORM_FONT = ("Verdana", 10)
 SMALL_FONT = ("Verdana", 8)
 style.use("ggplot")
-fig = plt.figure()
+fig = plt.figure(1)
 
-# MY VARIABLES
-startDate = "2018-1-1 01:00:00"
-endDate = "2018-2-1 01:00:00"
+# CANDLE
+candleType = "1D"
 candleWidth = 0.5
 darkColor = "#824B4B"
 lightColor = "#4B8251"
 volumeColor = "#7CA1B4"
-timeSpan = "1M"
-candleType = "1D"
-
 
 # THESE ARE DEFAULTS WHICH THE USER CAN CHANGE LATER
 exchange = "GDAX_BTCUSD"
-DatCounter = 9000  # force an update instead of waiting 30 seconds, counter for that is this
-programName = "btce"
-resampleSize = "15Min"  # each candle stcik will show 15 minutes change
-DataPace = "tick"
-
-paneCount = 1
-topIndicator = "none"
-bottomIndicator = "none"
-middleIndicator = "none"
-chartLoad = True
-
-def cunt():
-    print("Cunt")
-
-def changeExchange(toWhat, pn):  # program name
-    global exchange
-    global DatCounter
-    global programName  # by globalling them we can modify them
-
-    exchange = toWhat
-    programName = pn
-    DatCounter = 9000
+resampleSize = "15Min"
 
 def popupmsg(msg):  # a miniature version of a tk window
     popup = tk.Tk()
-
     def leavemini():
         popup.destroy()
 
@@ -83,33 +73,135 @@ def popupmsg(msg):  # a miniature version of a tk window
     B1.pack()  # just naturally go under the label
     popup.mainloop()
 
-def changeCandleType(type):
+def changeCandleType(type, width):
     global candleType
-    global DatCounter
+    global candleWidth
     candleType = type
-    DatCounter = 9000
-    #plt.clf()
+    candleWidth = width
+    print("Changed To:",type)
+    changeCandle()
+
+def action(action):
+    global nextRow
+    global rekt
+    global done
+
+    if action == "Skip 4x":
+        for _ in range(0, 3):
+            nextRow, rekt, done, reward = GE.nextStep(action)
+            getNewData()
+
+    elif action == "Skip 48x":
+        for _ in range(0, 47):
+            nextRow, rekt, done, reward = GE.nextStep(action)
+            getNewData()
+
+    elif action == "Skip 168x":
+        for _ in range(0, 167):
+            nextRow, rekt, done, reward = GE.nextStep(action)
+            getNewData()
+    else:
+        nextRow, rekt, done, reward = GE.nextStep(action)
+        getNewData()
+
+    if rekt == True:
+        popupmsg("YOU'RE REKT!")
+
+    if done == True:
+        msg = ("YOU WON THE GAME AND MADE $", str(fullBalance - initialBalance))
+        popupmsg(msg)
+
+    updateChart()
+
+def getNewData():
+    global df_segment
+    global rekt
+
+    df_segment = pd.concat([nextRow, df_segment])
+
+
+def changeCandle():
+    plt.clf()
+
+    if candleType == "1H":
+        ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
+        ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
+        plt.setp(ax1.get_xticklabels(), visible=False)
+
+        df_ohlc = df_segment["Close"]
+        df_volume = df_segment["Volume To"].resample(candleType).sum()
+        df_ohlc.reset_index(inplace=True)
+        df_ohlc["Date"] = df_ohlc["Date"].map(mdates.date2num)
+
+        ax1.xaxis_date()  # show mdates as readable normal date
+        plt.plt(ax1)
+        ax2.fill_between(df_volume.index.map(mdates.date2num), df_volume.values, 0, facecolors=volumeColor)
+        fig.canvas.draw()
+
+    else:
+        ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
+        ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
+        plt.setp(ax1.get_xticklabels(), visible=False)
+
+        df_ohlc = df_segment["Close"].resample(candleType).ohlc()
+        df_volume = df_segment["Volume To"].resample(candleType).sum()
+        df_ohlc.reset_index(inplace=True)
+        df_ohlc["Date"] = df_ohlc["Date"].map(mdates.date2num)
+
+        ax1.xaxis_date()  # show mdates as readable normal date
+        candlestick_ohlc(ax1, df_ohlc.values, width=candleWidth, colorup=lightColor, colordown=darkColor)
+        ax2.fill_between(df_volume.index.map(mdates.date2num), df_volume.values, 0, facecolors=volumeColor)
+        fig.canvas.draw()
+
+
+def updateChart():
+    global endDate
+    global df_segment
+    global fullBalance
+    global cashBalance
+    global btcBalance
+    global currentDate
+    global currentBTCPrice
+    global fullBalance
+
+    plt.clf()
+    ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
+    ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
+    plt.setp(ax1.get_xticklabels(), visible=False)
+
+    #df_segment = pd.concat([nextRow, df_segment])
+    df_ohlc = df_segment["Close"].resample(candleType).ohlc()
+    df_volume = df_segment["Volume To"].resample(candleType).sum()
+    df_ohlc.reset_index(inplace=True)
+    df_ohlc["Date"] = df_ohlc["Date"].map(mdates.date2num)
+
+    ax1.xaxis_date()  # show mdates as readable normal date
+    candlestick_ohlc(ax1, df_ohlc.values, width=candleWidth, colorup=lightColor, colordown=darkColor)
+    ax2.fill_between(df_volume.index.map(mdates.date2num), df_volume.values, 0, facecolors=volumeColor)
+    fig.canvas.draw()
+
+    fullBalance = GE.fullBalance
+    cashBalance = GE.cashBalance
+    btcBalance = GE.BTC_Balance
+    currentDate = GE.endDate
+    currentBTCPrice = GE.currentBTCPrice
+    fullBalance = GE.fullBalance
+
+    app.gamePage.updateBalance(fullBalance, cashBalance, btcBalance, currentDate, currentBTCPrice)
 
 def drawChart():
     try:
         if exchange == "GDAX_BTCUSD":
             plt.clf()
-            print("New Graph", "Candle Type:", candleType)
-
             ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
             ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
-
             plt.setp(ax1.get_xticklabels(), visible=False)
 
-            dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %H-%p")
-            df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
-            df = df.loc[startDate: endDate]
+            if showDates == False:
+                plt.setp(ax2.get_xticklabels(), visible=False)
 
-            # RESAMPLING
-            df_ohlc = df["Close"].resample(candleType).ohlc()
-            df_volume = df["Volume To"].resample(candleType).sum()
-            # print(df_ohlc.head())
-
+            df_ohlc = df_segment["Close"].resample(candleType).ohlc()
+            df_volume = df_segment["Volume To"].resample(candleType).sum()
             df_ohlc.reset_index(inplace=True)
             df_ohlc["Date"] = df_ohlc["Date"].map(mdates.date2num)
 
@@ -117,27 +209,18 @@ def drawChart():
             candlestick_ohlc(ax1, df_ohlc.values, width=candleWidth, colorup=lightColor, colordown=darkColor)
             ax2.fill_between(df_volume.index.map(mdates.date2num), df_volume.values, 0, facecolors=volumeColor)
 
-            DatCounter = 0  # RESET COUNTER
-            #fig.graph.draw()
-            #drawChart()
+            fig.canvas.draw()
 
     except Exception as e:
         print("Failed because of:", e)
 
-
 class SeaofBTCapp(tk.Tk):  # inherit from the tk class
-    def __init__(self, *args,
-                 **kwargs):  # ars - any number of variables being passed into here, kwargs - passing dictionaries
+    def __init__(self, *args, **kwargs):  # ars - any number of variables being passed into here, kwargs - passing dictionaries
         tk.Tk.__init__(self, *args, **kwargs)
 
-        # tk.TK.iconbitmap(self, default="icon_Name.ico")
         tk.Tk.wm_title(self, "BAWSAQ")
-
         container = tk.Frame(self)  # the actual main windo
         container.pack(side="top", fill="both", expand=True)
-        #container.grid(row=1, sticky="nsew")
-
-
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
@@ -155,57 +238,35 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
         exchangeChoice.add_command(label="Huobi", command=lambda: changeExchange("Huobi", "huobi"))
         menubar.add_cascade(label="Exchange", menu=exchangeChoice)
 
-        dataTF = tk.Menu(menubar, tearoff=1)  # timeframes for bars
-        dataTF.add_command(label="Tick", command=lambda: changeTimeFrame("tick"))
-        dataTF.add_command(label="1 Day", command=lambda: changeTimeFrame("1d"))
-        dataTF.add_command(label="3 Day", command=lambda: changeTimeFrame("3d"))
-        dataTF.add_command(label="1 Week", command=lambda: changeTimeFrame("7d"))
-        menubar.add_cascade(label="Data Time Frame", menu=dataTF)
-
-        OHLCI = tk.Menu(menubar, tearoff=1)
-        OHLCI.add_command(label="Tick", command=lambda: changeTimeFrame("tick"))
-        OHLCI.add_command(label="1 minute",
-                          command=lambda: changeSampleSize("1Min", 0.0005))  # width of the candle stick
-        OHLCI.add_command(label="5 minute", command=lambda: changeSampleSize("5Min", 0.003))
-        OHLCI.add_command(label="15 minute", command=lambda: changeSampleSize("15Min", 0.008))
-        OHLCI.add_command(label="30 minute", command=lambda: changeSampleSize("30Min", 0.016))
-        OHLCI.add_command(label="1 Hour", command=lambda: changeSampleSize("1H", 0.032))
-        OHLCI.add_command(label="3 Hour", command=lambda: changeSampleSize("3H", 0.096))
-        menubar.add_cascade(label="OHLC Interval", menu=OHLCI)
-
         tk.Tk.config(self, menu=menubar)
         self.frames = {}
 
-        for F in (StartPage, BTCe_Page):
-            frame = F(container, self)
-            self.frames[F] = frame
-            frame.grid(row=0, column=0,
-                       sticky="nsew")  # sticky is alignment north south east west, stretch everything to the sides of the window
-
-        self.show_frame(BTCe_Page)
+        self.gamePage = BTCe_Page(container, self)
+        self.gamePage.grid(row=0, column=0, sticky="nsew")
+        self.gamePage.tkraise()
 
     def show_frame(self, cont):  # bings chosen frame to the front
-        frame = self.frames[cont]
+        frame = self.frames[BTCe_Page]
         frame.tkraise()  # bring frame to the front
 
-class StartPage(tk.Frame):  # inherit tk.Frame so we dont have to call upon that
-    def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
-
-        label_1 = ttk.Label(self, text=("TRADE FROM HISTORICAL CHART DATA"), font=LARGE_FONT)
-        button_1 = ttk.Button(self, text="NEW GAME", command=lambda: controller.show_frame(BTCe_Page))
-        button_2 = ttk.Button(self, text="QUIT", command=quit)
-
-        label_1.grid(row=0, column=0, sticky="E")
-        button_1.grid(row=0, column=1)
-        button_2.grid(row=1, column=1)
-
 class BTCe_Page(tk.Frame):
+
+    def updateBalance(self, fullBalance, cashBalance, btc, currentDate ,currentBTCPrice):
+        self.TOTAL_Balance_val_lbl.configure(text=("$", str(fullBalance) ))
+        self.USD_Balance_val_lbl.configure(text=("$", str(cashBalance) ))
+        self.BTC_Balance_val_lbl.configure(text=btc)
+        if showDates == True:
+            self.currentDate_val_lbl.configure(text=(str(currentDate))[:16])
+        else:
+            self.currentDate_val_lbl.configure(text=(str(currentDate))[8:16])
+        self.currentBTCPrice_val_lbl.configure(text=("$", str(currentBTCPrice) ))
+        self.profit_val_lbl.configure(text=("$", str(fullBalance - 5000) ))
+
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
 
         # MAIN CONTAINER CREATION
-        top_frame = tk.Frame(self, bg='cyan', width=450, height=50, pady=3)
+        top_frame = tk.Frame(self, bg='white', width=450, height=50, pady=3)
         center = tk.Frame(self, bg='gray2', width=50, height=40, padx=3, pady=3)
         btm_frame = tk.Frame(self, bg='white', width=450, height=45, pady=3)
         btm_frame2 = tk.Frame(self, bg='lavender', width=450, height=60, pady=3)
@@ -213,31 +274,21 @@ class BTCe_Page(tk.Frame):
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
         # PLACE MAIN CONTAINERS
-        top_frame.grid(row=0, sticky="ew")
+        top_frame.grid(row=0, sticky="nsew")
+        top_frame.grid_rowconfigure(0, weight=1)
+        top_frame.grid_columnconfigure(1, weight=1)
+
         center.grid(row=1, sticky="nsew")
         btm_frame.grid(row=3, sticky="ew")
         btm_frame2.grid(row=4, sticky="ew")
-
-        # TOP FRAME
-        model_label = ttk.Label(top_frame, text='Model Dimensions')
-        width_label = ttk.Label(top_frame, text='Width:')
-        length_label = ttk.Label(top_frame, text='Length:')
-        entry_W = ttk.Entry(top_frame, background="pink")
-        entry_L = ttk.Entry(top_frame, background="orange")
-        # PLACE WIDGETS TO TOP FRAME
-        model_label.grid(row=0, columnspan=3)
-        width_label.grid(row=1, column=0)
-        length_label.grid(row=1, column=2)
-        entry_W.grid(row=1, column=1)
-        entry_L.grid(row=1, column=3)
 
         # ROWCONFIGURE - CENTER
         center.grid_rowconfigure(0, weight=1)
         center.grid_columnconfigure(1, weight=1)
         # CENTER FRAME
-        ctr_left = tk.Frame(center, bg='blue', width=100, height=190)
-        ctr_mid =  tk.Frame(center, bg='yellow', width=250, height=190, padx=3, pady=3)
-        ctr_right = tk.Frame(center, bg='green', width=100, height=190, padx=3, pady=3)
+        ctr_left = tk.Frame(center, bg='white', width=100, height=190)
+        ctr_mid =  tk.Frame(center, bg='white', width=250, height=190, padx=3, pady=3)
+        ctr_right = tk.Frame(center, bg='white', width=100, height=190, padx=3, pady=3)
 
         # PLACE CENTER FRAMES
         ctr_left.grid(row=0, column=0, sticky="ns")
@@ -251,65 +302,88 @@ class BTCe_Page(tk.Frame):
         # MID COLUMN - GRAPH
         graph = FigureCanvasTkAgg(fig, ctr_mid)
         graph.get_tk_widget().grid(row=0, column=1, sticky="nsew")
-        graph.draw()
 
         # LEFT BUTTON COLUMN
         candle_time = ttk.Label(ctr_left, text='Candle Time')
-        candle1H = ttk.Button(ctr_left, text="1 Hour", command=lambda: changeCandleType("1H"))
-        candle4H = ttk.Button(ctr_left, text="4 Hours", command=lambda: changeCandleType("4H"))
-        candle1D = ttk.Button(ctr_left, text="1 Day", command=lambda: changeCandleType("1D"))
-        candle1W = ttk.Button(ctr_left, text="1 Week", command=lambda: changeCandleType("1W"))
-
-        timeSpan = ttk.Label(ctr_left, text='Time Span')
-        timeSpan1D = ttk.Button(ctr_left, text="1 Day", command=lambda: controller.show_frame(BTCe_Page))
-        timeSpan1W = ttk.Button(ctr_left, text="1 Week", command=lambda: controller.show_frame(BTCe_Page))
-        timeSpan1M = ttk.Button(ctr_left, text="4 Weeks", command=lambda: controller.show_frame(BTCe_Page))
-        timeSpanFull = ttk.Button(ctr_left, text="Full", command=lambda: controller.show_frame(BTCe_Page))
+        #candle1H = ttk.Button(ctr_left, text="1 Hour", command=lambda: changeCandleType("1H", 0.032))
+        candle4H = ttk.Button(ctr_left, text="4 Hours", command=lambda: changeCandleType("4H", 0.08))
+        candle1D = ttk.Button(ctr_left, text="1 Day", command=lambda: changeCandleType("1D", 0.5))
+        candle1W = ttk.Button(ctr_left, text="1 Week", command=lambda: changeCandleType("1W", 5))
 
         candle_time.grid(row=0, columnspan=3,padx=10, pady=10)
-        candle1H.grid(row=1, columnspan=3)
+        #candle1H.grid(row=1, columnspan=3)
         candle4H.grid(row=2, columnspan=3)
         candle1D.grid(row=3, columnspan=3)
         candle1W.grid(row=4, columnspan=3)
 
-        timeSpan.grid(row=6, columnspan=3, padx=10, pady=10)
-        timeSpan1D.grid(row=7, columnspan=3)
-        timeSpan1W.grid(row=8, columnspan=3)
-        timeSpan1M.grid(row=9, columnspan=3)
-        timeSpanFull.grid(row=10, columnspan=3)
+        updateButton = ttk.Button(ctr_left, text="Update", command=lambda:popupmsg("REKT")).grid(row=11, columnspan=3)
 
-        updateButton = ttk.Button(ctr_left, text="Update", command=cunt())
-        updateButton.grid(row=11, columnspan=3)
+        # RIGHT DATE COLUMN
+        currentDate_lbl = ttk.Label(ctr_right, text='DATE:')
+        if showDates == True:
+            self.currentDate_val_lbl = ttk.Label(ctr_right, text=currentDate[:16])
+        else:
+            self.currentDate_val_lbl = ttk.Label(ctr_right, text=currentDate[8:16])
+        currentBTCPrice_lbl = ttk.Label(ctr_right, text='BTC PRICE:')
+        self.currentBTCPrice_val_lbl = ttk.Label(ctr_right, text=("$", str(currentBTCPrice) ))
+
+        # PLACEMENT
+        currentDate_lbl.grid(row=19, column=0, columnspan=1, pady=5, sticky="w")
+        self.currentDate_val_lbl.grid(row=19, column=1, columnspan=1, sticky="e")
+        currentBTCPrice_lbl.grid(row=20, column=0, columnspan=1, pady=5, sticky="w")
+        self.currentBTCPrice_val_lbl.grid(row=20, column=1, columnspan=1, sticky="e")
+
 
         # RIGHT BUTTON COLUMN
+        TOTAL_Balance_lbl = ttk.Label(ctr_right, text='TOTAL WORTH:')
+        self.TOTAL_Balance_val_lbl = ttk.Label(ctr_right, text=("$", str(fullBalance) ))
+        profit_lbl = ttk.Label(ctr_right, text='Profit:')
+        self.profit_val_lbl = ttk.Label(ctr_right, text=(fullBalance - 5000))
+        USD_Balance_lbl = ttk.Label(ctr_right, text='CASH WALLET:')
+        self.USD_Balance_val_lbl = ttk.Label(ctr_right, text=("$", str(cashBalance) ))
+        BTC_Balance_lbl = ttk.Label(ctr_right, text='BTC WALLET:')
+        self.BTC_Balance_val_lbl = ttk.Label(ctr_right, text=btcBalance)
+
         tradeBTC_lbl = ttk.Label(ctr_right, text='TRADE')
-        buyBTC_btn = ttk.Button(ctr_right, text="BUY BTC", command=lambda: cunt())
-        sellBTC_btn = ttk.Button(ctr_right, text="SELL BTC", command=lambda: controller.show_frame(BTCe_Page))
-        skip_btn = ttk.Button(ctr_right, text="SKIP", command=lambda: controller.show_frame(BTCe_Page))
+        buyBTC_btn = ttk.Button(ctr_right, text="BUY BTC for $500", command=lambda: action("Buy BTC"))
+        sellBTC_btn = ttk.Button(ctr_right, text="SELL BTC for $500", command=lambda: action("Sell BTC"))
 
-        timeSpan = ttk.Label(ctr_right, text='Time Span')
-        timeSpan1D = ttk.Button(ctr_right, text="1 Day", command=lambda: controller.show_frame(BTCe_Page))
-        timeSpan1W = ttk.Button(ctr_right, text="1 Week", command=lambda: controller.show_frame(BTCe_Page))
-        timeSpan1M = ttk.Button(ctr_right, text="4 Weeks", command=lambda: controller.show_frame(BTCe_Page))
+        skip_lbl = ttk.Label(ctr_right, text='Skip Forward')
+        skip_btn = ttk.Button(ctr_right, text="Skip Hour", command=lambda: action("Skip 1x"))
+        skip4x_btn = ttk.Button(ctr_right, text="Skip 4 Hours", command=lambda: action("Skip 4x"))
+        skip48x_btn = ttk.Button(ctr_right, text="Skip 2 Days", command=lambda: action("Skip 48x"))
+        skip168x_btn = ttk.Button(ctr_right, text="Skip 1 Week", command=lambda: action("Skip 168x"))
 
-        tradeBTC_lbl.grid(row=0, columnspan=3,padx=10, pady=10)
-        buyBTC_btn.grid(row=1, columnspan=3)
-        sellBTC_btn.grid(row=2, columnspan=3)
-        skip_btn.grid(row=3, columnspan=3)
+        # PLACEMENT
+        TOTAL_Balance_lbl.grid(row=21, column=0, columnspan=1, pady=30, sticky="w")
+        self.TOTAL_Balance_val_lbl.grid(row=21, column=1, columnspan=1, sticky="e")
+        profit_lbl.grid(row=22, column=0, columnspan=1, pady=30, sticky="w")
+        self.profit_val_lbl.grid(row=22, column=1, columnspan=1, sticky="e")
 
-        tradeBTC_lbl.grid(row=6, columnspan=3, padx=10, pady=10)
-        buyBTC_btn.grid(row=7, columnspan=3)
-        sellBTC_btn.grid(row=8, columnspan=3)
-        skip_btn.grid(row=9, columnspan=3)
+        USD_Balance_lbl.grid(row=23, column=0, columnspan=1, pady=5, sticky="w")
+        self.USD_Balance_val_lbl.grid(row=23, column=1, columnspan=1, sticky="e")
 
+        BTC_Balance_lbl.grid(row=24, column=0, columnspan=1, pady=5, sticky="w")
+        self.BTC_Balance_val_lbl.grid(row=24, column=1, columnspan=1, sticky="e")
+
+        tradeBTC_lbl.grid(row=25, columnspan=1, pady=10)
+        buyBTC_btn.grid(row=26, columnspan=1)
+        sellBTC_btn.grid(row=27, columnspan=1)
+
+        skip_lbl.grid(row=28, columnspan=1, pady=10)
+        skip_btn.grid(row=29, columnspan=1)
+        skip4x_btn.grid(row=30, columnspan=1)
+        skip48x_btn.grid(row=31, columnspan=1)
+        skip168x_btn.grid(row=32, columnspan=1)
 
 
 
 app = SeaofBTCapp()
 app.geometry("1280x720")
-#ani = animation.FuncAnimation(fig, animate, interval=2000)
+test = drawChart()
 
 app.mainloop()
+
 
 
 

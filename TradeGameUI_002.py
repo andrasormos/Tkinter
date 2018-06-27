@@ -35,7 +35,8 @@ cashBalance = GE.cashBalance
 btcBalance = GE.BTC_Balance
 currentDate = GE.endDate
 currentBTCPrice = GE.currentBTCPrice
-fullBalance = GE.fullBalance
+initialBalance = GE.initialBalance
+
 rekt = True
 
 nextRow = pd.DataFrame
@@ -50,8 +51,8 @@ style.use("ggplot")
 fig = plt.figure(1)
 
 # CANDLE
-candleType = "4H"
-candleWidth = 0.08
+candleType = "1D"
+candleWidth = 0.5
 darkColor = "#824B4B"
 lightColor = "#4B8251"
 volumeColor = "#7CA1B4"
@@ -87,24 +88,28 @@ def action(action):
 
     if action == "Skip 4x":
         for _ in range(0, 3):
-            nextRow, rekt, done = GE.nextStep(action)
+            nextRow, rekt, done, reward = GE.nextStep(action)
             getNewData()
 
     elif action == "Skip 48x":
         for _ in range(0, 47):
-            nextRow, rekt, done = GE.nextStep(action)
+            nextRow, rekt, done, reward = GE.nextStep(action)
             getNewData()
 
     elif action == "Skip 168x":
         for _ in range(0, 167):
-            nextRow, rekt, done = GE.nextStep(action)
+            nextRow, rekt, done, reward = GE.nextStep(action)
             getNewData()
     else:
-        nextRow, rekt, done = GE.nextStep(action)
+        nextRow, rekt, done, reward = GE.nextStep(action)
         getNewData()
 
     if rekt == True:
         popupmsg("YOU'RE REKT!")
+
+    if done == True:
+        msg = ("YOU WON THE GAME AND MADE $", str(fullBalance - initialBalance))
+        popupmsg(msg)
 
     updateChart()
 
@@ -300,13 +305,13 @@ class BTCe_Page(tk.Frame):
 
         # LEFT BUTTON COLUMN
         candle_time = ttk.Label(ctr_left, text='Candle Time')
-        candle1H = ttk.Button(ctr_left, text="1 Hour", command=lambda: changeCandleType("1H", 0.032))
+        #candle1H = ttk.Button(ctr_left, text="1 Hour", command=lambda: changeCandleType("1H", 0.032))
         candle4H = ttk.Button(ctr_left, text="4 Hours", command=lambda: changeCandleType("4H", 0.08))
         candle1D = ttk.Button(ctr_left, text="1 Day", command=lambda: changeCandleType("1D", 0.5))
         candle1W = ttk.Button(ctr_left, text="1 Week", command=lambda: changeCandleType("1W", 5))
 
         candle_time.grid(row=0, columnspan=3,padx=10, pady=10)
-        candle1H.grid(row=1, columnspan=3)
+        #candle1H.grid(row=1, columnspan=3)
         candle4H.grid(row=2, columnspan=3)
         candle1D.grid(row=3, columnspan=3)
         candle1W.grid(row=4, columnspan=3)

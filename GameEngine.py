@@ -10,7 +10,16 @@ class PlayGame(object):
     def startGame(self):
         print("Game Started")
 
+        self.gameLength = 730
+        self.amountToSpend = 500
+        self.initialBalance = 5000
+        self.cashBalance = 5000
+        self.fullBalance = self.cashBalance
+        self.prevFullBalance = self.fullBalance
+        self.BTC_Balance = 0
+        self.currentBTCPrice = 0
         self.initialTimeRange = 730
+
         dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %I-%p")
         self.df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
 
@@ -19,18 +28,11 @@ class PlayGame(object):
 
         print("c_START:",self.startIndex," - ",self.startDate,"\n","c_END: ",self.endIndex, " - ",self.endDate)
 
-        self.gameLength = 48
-        self.amountToSpend = 500
-        self.initialBalance = 5000
-        self.cashBalance = 5000
-
-        self.fullBalance = self.cashBalance
-        self.BTC_Balance = 0
-        self.currentBTCPrice = 0
         self.getInitBTCPrice()
         self.rekt = False
         self.done = False
         self.cnt = 1
+        self.reward = 0
 
     def getInitBTCPrice(self):
         endIndex = self.endIndex - 1
@@ -74,8 +76,9 @@ class PlayGame(object):
             moneyWorthInBTC = self.amountToSpend / self.currentBTCPrice  # 0.1
             
             if moneyWorthInBTC > self.BTC_Balance:
-                self.BTC_Balance = 0
                 self.cashBalance = self.cashBalance + (self.BTC_Balance * self.currentBTCPrice)
+                self.BTC_Balance = 0
+                print("Money worth is bigger then BTC balance. New Cash Balance: ", self.cashBalance)
             else:
                 self.BTC_Balance = self.BTC_Balance - moneyWorthInBTC
                 self.cashBalance = self.cashBalance + self.amountToSpend
@@ -93,19 +96,14 @@ class PlayGame(object):
             if (self.fullBalance - self.initialBalance) < 0:
                 self.rekt = True
 
-        return self.nextRow, self.rekt, self.done
+        self.reward = self.fullBalance - self.prevFullBalance
+        print("REWARD: ", self.reward)
+        self.prevFullBalance = self.fullBalance
 
-    def getStartDate(self):
-        return self.startDate
-
-    def getEndDate(self):
-        return self.endDate
+        return self.nextRow, self.rekt, self.done, self.reward
 
     def getChartData(self):
         return self.df_segment
-
-    def getBalance(self):
-        return self.fullBalance
 
 
 
