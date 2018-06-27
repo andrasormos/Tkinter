@@ -200,8 +200,13 @@ def drawChart():
             if showDates == False:
                 plt.setp(ax2.get_xticklabels(), visible=False)
 
+            print("Type of df_segment:", type(df_segment))
+
             df_ohlc = df_segment["Close"].resample(candleType).ohlc()
+            #df_ohlc = pd.Series.to_frame(df_ohlc)
             df_volume = df_segment["Volume To"].resample(candleType).sum()
+            print("Type of df_ohlc:", type(df_ohlc))
+
             df_ohlc.reset_index(inplace=True)
             df_ohlc["Date"] = df_ohlc["Date"].map(mdates.date2num)
 
