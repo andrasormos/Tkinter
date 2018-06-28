@@ -36,6 +36,9 @@ btcBalance = GE.BTC_Balance
 currentDate = GE.endDate
 currentBTCPrice = GE.currentBTCPrice
 initialBalance = GE.initialBalance
+gameLength = GE.gameLength
+cnt = str(dt.timedelta(hours=(gameLength - GE.cnt)))
+
 
 rekt = True
 
@@ -128,7 +131,7 @@ def changeCandle():
         ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
         plt.setp(ax1.get_xticklabels(), visible=False)
 
-        df_ohlc = df_segment["Close"]
+        df_ohlc = df_segment[["Close"]].resample(candleType).sum()
         df_volume = df_segment["Volume To"].resample(candleType).sum()
         df_ohlc.reset_index(inplace=True)
         df_ohlc["Date"] = df_ohlc["Date"].map(mdates.date2num)
@@ -163,14 +166,14 @@ def updateChart():
     global currentDate
     global currentBTCPrice
     global fullBalance
+    global cnt
 
     plt.clf()
     ax1 = plt.subplot2grid((6, 1), (0, 0), rowspan=5, colspan=1)
     ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
     plt.setp(ax1.get_xticklabels(), visible=False)
 
-    #df_segment = pd.concat([nextRow, df_segment])
-    df_ohlc = df_segment["Close"].resample(candleType).ohlc()
+    df_ohlc = df_segment[["Close"]].resample(candleType).ohlc()
     df_volume = df_segment["Volume To"].resample(candleType).sum()
     df_ohlc.reset_index(inplace=True)
     df_ohlc["Date"] = df_ohlc["Date"].map(mdates.date2num)
@@ -180,6 +183,7 @@ def updateChart():
     ax2.fill_between(df_volume.index.map(mdates.date2num), df_volume.values, 0, facecolors=volumeColor)
     fig.canvas.draw()
 
+    cnt = str(dt.timedelta(hours=(gameLength - GE.cnt)))
     fullBalance = GE.fullBalance
     cashBalance = GE.cashBalance
     btcBalance = GE.BTC_Balance
@@ -187,7 +191,7 @@ def updateChart():
     currentBTCPrice = GE.currentBTCPrice
     fullBalance = GE.fullBalance
 
-    app.gamePage.updateBalance(fullBalance, cashBalance, btcBalance, currentDate, currentBTCPrice)
+    app.gamePage.updateBalance(cnt, fullBalance, cashBalance, btcBalance, currentDate, currentBTCPrice)
 
 def drawChart():
     try:
@@ -200,17 +204,13 @@ def drawChart():
             if showDates == False:
                 plt.setp(ax2.get_xticklabels(), visible=False)
 
-            print("Type of df_segment:", type(df_segment))
-
-            df_ohlc = df_segment["Close"].resample(candleType).ohlc()
-            #df_ohlc = pd.Series.to_frame(df_ohlc)
+            df_ohlc = df_segment[["Close"]].resample(candleType).ohlc()
             df_volume = df_segment["Volume To"].resample(candleType).sum()
-            print("Type of df_ohlc:", type(df_ohlc))
 
             df_ohlc.reset_index(inplace=True)
-            df_ohlc["Date"] = df_ohlc["Date"].map(mdates.date2num)
+            df_ohlc["Date"] = df_ohlc["Date"].map(mdates.date2num)  # show mdates as readable normal date
 
-            ax1.xaxis_date()  # show mdates as readable normal date
+            ax1.xaxis_date()
             candlestick_ohlc(ax1, df_ohlc.values, width=candleWidth, colorup=lightColor, colordown=darkColor)
             ax2.fill_between(df_volume.index.map(mdates.date2num), df_volume.values, 0, facecolors=volumeColor)
 
@@ -256,7 +256,8 @@ class SeaofBTCapp(tk.Tk):  # inherit from the tk class
 
 class BTCe_Page(tk.Frame):
 
-    def updateBalance(self, fullBalance, cashBalance, btc, currentDate ,currentBTCPrice):
+    def updateBalance(self, cnt, fullBalance, cashBalance, btc, currentDate ,currentBTCPrice):
+        self.cnt_val_lbl.configure(text=cnt[:14])
         self.TOTAL_Balance_val_lbl.configure(text=("$", str(fullBalance) ))
         self.USD_Balance_val_lbl.configure(text=("$", str(cashBalance) ))
         self.BTC_Balance_val_lbl.configure(text=btc)
@@ -329,18 +330,23 @@ class BTCe_Page(tk.Frame):
             self.currentDate_val_lbl = ttk.Label(ctr_right, text=currentDate[:16])
         else:
             self.currentDate_val_lbl = ttk.Label(ctr_right, text=currentDate[8:16])
+
+        cnt_lbl = ttk.Label(ctr_right, text='TIME LEFT:')
+        self.cnt_val_lbl = ttk.Label(ctr_right, text=cnt)
         currentBTCPrice_lbl = ttk.Label(ctr_right, text='BTC PRICE:')
         self.currentBTCPrice_val_lbl = ttk.Label(ctr_right, text=("$", str(currentBTCPrice) ))
 
         # PLACEMENT
-        currentDate_lbl.grid(row=19, column=0, columnspan=1, pady=5, sticky="w")
-        self.currentDate_val_lbl.grid(row=19, column=1, columnspan=1, sticky="e")
+        currentDate_lbl.grid(row=18, column=0, columnspan=1, pady=5, sticky="w")
+        self.currentDate_val_lbl.grid(row=18, column=1, columnspan=1, sticky="e")
+        cnt_lbl.grid(row=19, column=0, columnspan=1, pady=5, sticky="w")
+        self.cnt_val_lbl.grid(row=19, column=1, columnspan=1, sticky="e")
         currentBTCPrice_lbl.grid(row=20, column=0, columnspan=1, pady=5, sticky="w")
         self.currentBTCPrice_val_lbl.grid(row=20, column=1, columnspan=1, sticky="e")
 
 
         # RIGHT BUTTON COLUMN
-        TOTAL_Balance_lbl = ttk.Label(ctr_right, text='TOTAL WORTH:')
+        TOTAL_Balance_lbl = ttk.Label(ctr_right, text='Total Worth:')
         self.TOTAL_Balance_val_lbl = ttk.Label(ctr_right, text=("$", str(fullBalance) ))
         profit_lbl = ttk.Label(ctr_right, text='Profit:')
         self.profit_val_lbl = ttk.Label(ctr_right, text=(fullBalance - 5000))

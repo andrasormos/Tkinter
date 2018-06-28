@@ -8,8 +8,8 @@ class PlayGame(object):
         self.gameIsRunning = True
 
     def startGame(self):
-        self.gameLength = 60        # How long the game should go on
-        self.initialTimeRange = 30  # How many data increment should be shown as history. Could be hours, months
+        self.gameLength = 730        # How long the game should go on
+        self.initialTimeRange = 1460  # How many data increment should be shown as history. Could be hours, months
         self.timeStepSize = "H"       # Does nothing atm
         self.amountToSpend = 500    # How much to purchase crypto for
         self.cashBalance = 5000     # Starting Money
@@ -18,15 +18,11 @@ class PlayGame(object):
         # LOAD DATA
         dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %I-%p")
         self.df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
-        print("Type is:", type(self.df))
-        print("\n")
-
 
         if self.timeStepSize == "D":
-            self.df = self.df.resample("D").mean()
-            #print(self.df.head())
+            self.df = self.df.resample("D" ).mean()
+            #self.df = self.df.iloc[::-1]
 
-        print("Type is:", type(self.df))
         self.dataSize = len(self.df.index)
 
         # GET RANDOM SEGMENT FROM DATA
@@ -34,8 +30,6 @@ class PlayGame(object):
         self.df_segment = self.df.loc[self.startDate : self.endDate]
         print("START ID:",self.startIndex," - ",self.startDate,"\n","END ID: ",self.endIndex, " - ",self.endDate)
         print("\n")
-
-        #print(self.df_segment.head())
 
         self.currentBTCPrice = 0
         self.initialBalance = self.cashBalance
@@ -54,13 +48,18 @@ class PlayGame(object):
         self.currentBTCPrice = nextRow["Close"][0]
 
     def randomChart(self):
-        print("Finding Random Timeframe")
+        print("Finding Random Timeframe:")
 
         print("Data Size=", self.dataSize)
         print("Game Length=", self.gameLength)
 
-        startIndex = randint((self.gameLength + 1), self.dataSize)
-        endIndex = startIndex - self.initialTimeRange
+        if self.timeStepSize == "H":
+            startIndex = randint((self.gameLength + 1), self.dataSize)
+            endIndex = startIndex - self.initialTimeRange
+
+        if self.timeStepSize == "D":
+            startIndex = randint(0, (self.dataSize - self.gameLength + 1))
+            endIndex = startIndex + self.initialTimeRange
 
         startDate = self.df.index[startIndex]
         endDate = self.df.index[endIndex - 1]
@@ -79,7 +78,7 @@ class PlayGame(object):
 
     def nextStep(self, action):
 
-        self.cnt = self.cnt + self.timeStepSize
+        self.cnt = self.cnt + 1
         # NEXT ROW
         self.endIndex = self.endIndex - 1
         self.endDate = self.df.index[self.endIndex - 1]
