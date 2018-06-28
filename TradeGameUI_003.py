@@ -28,7 +28,7 @@ from GameEngine import PlayGame
 #   * - alt + shift + ?
 
 GE = PlayGame()
-GE.startGame()
+GE.startGame(730, 1460, "H")
 df_segment = GE.getChartData()
 fullBalance = GE.fullBalance
 cashBalance = GE.cashBalance
@@ -39,12 +39,11 @@ initialBalance = GE.initialBalance
 gameLength = GE.gameLength
 cnt = str(dt.timedelta(hours=(gameLength - GE.cnt)))
 
-
 rekt = True
 
 nextRow = pd.DataFrame
 
-showDates = True
+showDates = False
 
 # STYLING
 LARGE_FONT = ("Verdana", 12)
@@ -121,7 +120,6 @@ def getNewData():
     global rekt
 
     df_segment = pd.concat([nextRow, df_segment])
-
 
 def changeCandle():
     plt.clf()

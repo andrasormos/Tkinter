@@ -7,21 +7,20 @@ class PlayGame(object):
     def __init__(self):
         self.gameIsRunning = True
 
-    def startGame(self):
-        self.gameLength = 730        # How long the game should go on
-        self.initialTimeRange = 1460  # How many data increment should be shown as history. Could be hours, months
-        self.timeStepSize = "H"       # Does nothing atm
-        self.amountToSpend = 500    # How much to purchase crypto for
-        self.cashBalance = 5000     # Starting Money
-        self.BTC_Balance = 0        # BTC to start with
-
         # LOAD DATA
         dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %I-%p")
         self.df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
 
+    def startGame(self, gameLength, initTimerange, timeStepSize):
+        self.gameLength = gameLength        # How long the game should go on
+        self.initialTimeRange = initTimerange  # How many data increment should be shown as history. Could be hours, months
+        self.timeStepSize = timeStepSize       # Does nothing atm
+        self.amountToSpend = 500    # How much to purchase crypto for
+        self.cashBalance = 5000     # Starting Money
+        self.BTC_Balance = 0        # BTC to start with
+
         if self.timeStepSize == "D":
             self.df = self.df.resample("D" ).mean()
-            #self.df = self.df.iloc[::-1]
 
         self.dataSize = len(self.df.index)
 
@@ -29,7 +28,6 @@ class PlayGame(object):
         self.startDate, self.endDate, self.startIndex, self.endIndex = self.randomChart()
         self.df_segment = self.df.loc[self.startDate : self.endDate]
         print("START ID:",self.startIndex," - ",self.startDate,"\n","END ID: ",self.endIndex, " - ",self.endDate)
-        print("\n")
 
         self.currentBTCPrice = 0
         self.initialBalance = self.cashBalance
@@ -48,17 +46,12 @@ class PlayGame(object):
         self.currentBTCPrice = nextRow["Close"][0]
 
     def randomChart(self):
-        print("Finding Random Timeframe:")
-
-        print("Data Size=", self.dataSize)
-        print("Game Length=", self.gameLength)
-
         if self.timeStepSize == "H":
-            startIndex = randint((self.gameLength + 1), self.dataSize)
+            startIndex = randint((self.initialTimeRange + 1), self.dataSize)
             endIndex = startIndex - self.initialTimeRange
 
         if self.timeStepSize == "D":
-            startIndex = randint(0, (self.dataSize - self.gameLength + 1))
+            startIndex = randint(0, (self.dataSize - self.initialTimeRange + 1))
             endIndex = startIndex + self.initialTimeRange
 
         startDate = self.df.index[startIndex]
@@ -71,8 +64,6 @@ class PlayGame(object):
         if self.timeStepSize == "D":
             startDateStr = startDate.strftime("%Y-%m-%d")
             endDateStr = endDate.strftime("%Y-%m-%d")
-
-        print("\n")
 
         return startDateStr, endDateStr, startIndex, endIndex
 
@@ -101,7 +92,7 @@ class PlayGame(object):
             if moneyWorthInBTC > self.BTC_Balance:
                 self.cashBalance = self.cashBalance + (self.BTC_Balance * self.currentBTCPrice)
                 self.BTC_Balance = 0
-                print("Money worth is bigger then BTC balance. New Cash Balance: ", self.cashBalance)
+                #print("Money worth is bigger then BTC balance. New Cash Balance: ", self.cashBalance)
             else:
                 self.BTC_Balance = self.BTC_Balance - moneyWorthInBTC
                 self.cashBalance = self.cashBalance + self.amountToSpend
