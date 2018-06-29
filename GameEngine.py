@@ -26,7 +26,6 @@ class PlayGame(object):
         # GET RANDOM SEGMENT FROM DATA
         self.startDate, self.endDate, self.startIndex, self.endIndex = self.randomChart()
         self.df_segment = self.df.loc[self.startDate : self.endDate]
-        #print("START ID:",self.startIndex," - ",self.startDate,"\n","END ID: ",self.endIndex, " - ",self.endDate)
 
         self.currentBTCPrice = 0
         self.initialBalance = self.cashBalance
@@ -47,7 +46,6 @@ class PlayGame(object):
     def randomChart(self):
         if self.timeStepSize == "H":
             startIndex = randint((self.initialTimeRange + 1), (self.dataSize - 1))
-
             endIndex = startIndex - self.initialTimeRange
 
         if self.timeStepSize == "D":
@@ -68,14 +66,11 @@ class PlayGame(object):
         return startDateStr, endDateStr, startIndex, endIndex
 
     def nextStep(self, action):
-
         self.cnt = self.cnt + 1
-        # NEXT ROW
         self.endIndex = self.endIndex - 1
         self.endDate = self.df.index[self.endIndex - 1]
         self.nextRow = self.df.loc[[self.endDate]]
         self.df_segment = pd.concat([self.nextRow, self.df_segment])
-
         self.currentBTCPrice = self.nextRow["Close"][0]
 
         if action == "Buy BTC":
@@ -101,19 +96,24 @@ class PlayGame(object):
         self.BTC_Balance = round((self.BTC_Balance), 5)
         self.fullBalance = round((self.cashBalance + (self.BTC_Balance * self.currentBTCPrice)), 0)
 
+        #print("Full:",self.fullBalance,"Initial:", self.initialBalance)
+
         if self.fullBalance <= 0:
             self.rekt = True
+            self.reward = self.fullBalance - self.initialBalance
 
         if self.cnt == self.gameLength:
             self.done = True
+            self.reward = self.fullBalance - self.initialBalance
 
             if (self.fullBalance - self.initialBalance) < 0:
                 self.rekt = True
 
-        self.reward = self.fullBalance - self.prevFullBalance
-        #print("REWARD: ", self.reward)
-        self.prevFullBalance = self.fullBalance
 
+
+        #print("REWARD: ", self.reward)
+        #self.prevFullBalance = self.fullBalance
+        #print("Reward:",self.reward)
         return self.nextRow, self.rekt, self.done, self.reward
 
     def getChartData(self):

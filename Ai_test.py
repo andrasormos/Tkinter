@@ -22,27 +22,23 @@ y = []
 
 for game in range(games):
     GE.startGame(gameLength, initTimerange, timeStepSize)
-    #print(GE.currentBTCPrice)
+    done = False
 
-
-    for step in range(gameLength):
-        pass
-        #action = actions[randint(0,2)]
+    #for step in range(gameLength):
+    while done == False:
         action = actions[np.random.choice(np.arange(0, 3), p=[0.9, 0.05, 0.05])]
-        #print("Action:", action)
-
         nextRow, rekt, done, reward = GE.nextStep(action)
-        #print("Next Row:", nextRow, "\n", "Rekt:", rekt, "\n", "Done:", done, "\n", "Reward:", reward)
 
+    if done == True:
+        profit = GE.fullBalance - GE.initialBalance
+        reward = GE.reward
+        print("Game:", game, "Profit:", profit, "Reward:", reward)
 
-    profit = GE.fullBalance - GE.initialBalance
-    print("Game:", game, "Profit:", profit)
+        y.append(profit)
+        x.append(GE.startDate)
+        df = pd.DataFrame({"hours": x, "profits": y})
+        df.to_csv("gameLog.csv")
 
-    y.append(profit)
-    x.append(GE.startDate)
-    df = pd.DataFrame({"hours": x, "profits": y})
-    df.to_csv("gameLog.csv")
-    print("\n")
 
 
 '''
