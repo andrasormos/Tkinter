@@ -1,7 +1,6 @@
-import random
+
 from random import randint
 import pandas as pd
-import numpy as np
 
 class PlayGame(object):
     def __init__(self):
@@ -9,7 +8,7 @@ class PlayGame(object):
 
         # LOAD DATA
         dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %I-%p")
-        self.df = pd.read_csv("Gdax_BTCUSD_1h.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
+        self.df = pd.read_csv("Gdax_BTCUSD_1h_priceOnly.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
 
     def startGame(self, gameLength, initTimerange, timeStepSize):
         self.gameLength = gameLength        # How long the game should go on
@@ -27,7 +26,7 @@ class PlayGame(object):
         # GET RANDOM SEGMENT FROM DATA
         self.startDate, self.endDate, self.startIndex, self.endIndex = self.randomChart()
         self.df_segment = self.df.loc[self.startDate : self.endDate]
-        print("START ID:",self.startIndex," - ",self.startDate,"\n","END ID: ",self.endIndex, " - ",self.endDate)
+        #print("START ID:",self.startIndex," - ",self.startDate,"\n","END ID: ",self.endIndex, " - ",self.endDate)
 
         self.currentBTCPrice = 0
         self.initialBalance = self.cashBalance
@@ -47,7 +46,8 @@ class PlayGame(object):
 
     def randomChart(self):
         if self.timeStepSize == "H":
-            startIndex = randint((self.initialTimeRange + 1), self.dataSize)
+            startIndex = randint((self.initialTimeRange + 1), (self.dataSize - 1))
+
             endIndex = startIndex - self.initialTimeRange
 
         if self.timeStepSize == "D":

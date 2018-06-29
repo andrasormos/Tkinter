@@ -171,6 +171,9 @@ def updateChart():
     ax2 = plt.subplot2grid((6, 1), (5, 0), rowspan=1, colspan=1, sharex=ax1)
     plt.setp(ax1.get_xticklabels(), visible=False)
 
+    if showDates == False:
+        plt.setp(ax2.get_xticklabels(), visible=False)
+
     df_ohlc = df_segment[["Close"]].resample(candleType).ohlc()
     df_volume = df_segment["Volume To"].resample(candleType).sum()
     df_ohlc.reset_index(inplace=True)
