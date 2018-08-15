@@ -10,7 +10,7 @@ import csv
 
 GE = PlayGame()
 
-games = 20000
+games = 1
 gameLength = 168
 initTimerange = 1460
 timeStepSize = "H"
@@ -24,10 +24,16 @@ for game in range(games):
     GE.startGame(gameLength, initTimerange, timeStepSize)
     done = False
 
+    df_segment = GE.getChartData()
+
+    print(df_segment)
+
     #for step in range(gameLength):
     while done == False:
         action = actions[np.random.choice(np.arange(0, 3), p=[0.9, 0.05, 0.05])]
         nextRow, rekt, done, reward = GE.nextStep(action)
+
+        #print(nextRow)
 
     if done == True:
         profit = GE.fullBalance - GE.initialBalance

@@ -12,9 +12,6 @@ print(df)
 
 
 
-
-
-
 df["hours"] = pd.to_datetime((df["hours"]))
 df = df.set_index("hours")
 

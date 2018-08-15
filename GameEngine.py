@@ -8,7 +8,7 @@ class PlayGame(object):
 
         # LOAD DATA
         dateParse = lambda x: pd.datetime.strptime(x, "%Y-%m-%d %I-%p")
-        self.df = pd.read_csv("Gdax_BTCUSD_1h_priceOnly.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
+        self.df = pd.read_csv("Gdax_BTCUSD_1h_close.csv", parse_dates=["Date"], date_parser=dateParse, index_col=0)
 
     def startGame(self, gameLength, initTimerange, timeStepSize):
         self.gameLength = gameLength        # How long the game should go on
@@ -45,15 +45,15 @@ class PlayGame(object):
 
     def randomChart(self):
         if self.timeStepSize == "H":
-            startIndex = randint((self.initialTimeRange + 1), (self.dataSize - 1))
-            endIndex = startIndex - self.initialTimeRange
+            startIndex = randint((self.initialTimeRange + self.gameLength), self.dataSize) #self.initialTimeRange # self.dataSize
+            endIndex = startIndex - self.initialTimeRange + 1
 
         if self.timeStepSize == "D":
             startIndex = randint(0, (self.dataSize - self.initialTimeRange + 1))
             endIndex = startIndex + self.initialTimeRange
 
         startDate = self.df.index[startIndex]
-        endDate = self.df.index[endIndex - 1]
+        endDate = self.df.index[endIndex]
 
         if self.timeStepSize == "H":
             startDateStr = startDate.strftime("%Y-%m-%d %H:%M:%S")
@@ -87,7 +87,6 @@ class PlayGame(object):
             if moneyWorthInBTC > self.BTC_Balance:
                 self.cashBalance = self.cashBalance + (self.BTC_Balance * self.currentBTCPrice)
                 self.BTC_Balance = 0
-                #print("Money worth is bigger then BTC balance. New Cash Balance: ", self.cashBalance)
             else:
                 self.BTC_Balance = self.BTC_Balance - moneyWorthInBTC
                 self.cashBalance = self.cashBalance + self.amountToSpend
@@ -95,8 +94,6 @@ class PlayGame(object):
         self.cashBalance = round((self.cashBalance), 0)
         self.BTC_Balance = round((self.BTC_Balance), 5)
         self.fullBalance = round((self.cashBalance + (self.BTC_Balance * self.currentBTCPrice)), 0)
-
-        #print("Full:",self.fullBalance,"Initial:", self.initialBalance)
 
         if self.fullBalance <= 0:
             self.rekt = True
@@ -109,8 +106,6 @@ class PlayGame(object):
             if (self.fullBalance - self.initialBalance) < 0:
                 self.rekt = True
 
-
-
         #print("REWARD: ", self.reward)
         #self.prevFullBalance = self.fullBalance
         #print("Reward:",self.reward)
@@ -119,12 +114,13 @@ class PlayGame(object):
     def getChartData(self):
         return self.df_segment
 
-
-
-
 if __name__ == "__main__":
     test = PlayGame()
-    test.startGame()
-    test.nextStep("Buy BTC")
+    test.startGame(730, 24, "H")
+
+    chart = test.getChartData()
+
+
+    #test.nextStep("Buy BTC")
 
 
